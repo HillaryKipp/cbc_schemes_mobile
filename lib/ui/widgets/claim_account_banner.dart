@@ -10,7 +10,7 @@ class ClaimAccountBanner extends StatelessWidget {
     super.key,
     required this.onClaimPressed,
     this.title = 'Save your schemes permanently',
-    this.message = 'You are in Guest Mode. Connect with Google to sync, re-download anywhere, and access your schemes from any device.',
+    this.message = 'You are currently in Guest Mode. Sign in or create an account with your email and password to sync and access your schemes from any device.',
   });
 
   @override

@@ -94,7 +94,7 @@ class _SchemePreviewScreenState extends State<SchemePreviewScreen> {
             onPressed: () {
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Google Play Billing / M-Pesa sandbox initiated.')),
+                const SnackBar(content: Text('M-Pesa / Card checkout initiated.')),
               );
             },
             child: const Text('Pay with M-Pesa / Card'),

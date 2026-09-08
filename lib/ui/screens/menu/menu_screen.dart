@@ -4,8 +4,10 @@ import '../../../core/config/app_config.dart';
 import '../../../core/config/theme.dart';
 import '../../../services/guest_storage_service.dart';
 import '../../../state/auth_provider.dart';
+import '../../../state/scheme_list_provider.dart';
 import '../admin/admin_screen.dart';
 import '../auth/auth_modal.dart';
+import '../saved/saved_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -45,7 +47,10 @@ class _MenuScreenState extends State<MenuScreen> {
     );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Teacher Profile saved! Will auto-fill upcoming schemes.')),
+      const SnackBar(
+        content: Text('Account profile & cover details saved!'),
+        backgroundColor: AppTheme.primaryGreen,
+      ),
     );
   }
 
@@ -61,11 +66,14 @@ class _MenuScreenState extends State<MenuScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
+    final schemeList = context.watch<SchemeListProvider>();
+
+    final totalSchemes = schemeList.allSchemes.length;
 
     return Scaffold(
       backgroundColor: AppTheme.surfaceBg,
       appBar: AppBar(
-        title: const Text('Menu & Settings', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+        title: const Text('Menu & Account', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -84,11 +92,12 @@ class _MenuScreenState extends State<MenuScreen> {
                 Row(
                   children: [
                     CircleAvatar(
-                      radius: 20,
+                      radius: 22,
                       backgroundColor: authProvider.isGuest ? const Color(0xFFFEF3C7) : AppTheme.primaryGreenLight,
                       child: Icon(
                         authProvider.isGuest ? Icons.person_outline : Icons.verified_user_rounded,
                         color: authProvider.isGuest ? AppTheme.accentOrange : AppTheme.primaryGreen,
+                        size: 24,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -97,11 +106,14 @@ class _MenuScreenState extends State<MenuScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            authProvider.isGuest ? 'Guest Mode (No Login Required)' : 'Signed In',
-                            style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppTheme.textDark),
+                            authProvider.isGuest ? 'Guest Teacher' : authProvider.userDisplayName,
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.textDark),
                           ),
+                          const SizedBox(height: 2),
                           Text(
-                            authProvider.isGuest ? 'Schemes saved locally on device' : (authProvider.user?.email ?? 'Connected with Google'),
+                            authProvider.isGuest
+                                ? 'Create an email account to back up schemes'
+                                : authProvider.userEmail,
                             style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
                           ),
                         ],
@@ -110,19 +122,115 @@ class _MenuScreenState extends State<MenuScreen> {
                   ],
                 ),
                 const SizedBox(height: 14),
+                if (authProvider.isGuest) ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => AuthModal.show(context, isSignUp: false),
+                          icon: const Icon(Icons.login_rounded, size: 16),
+                          label: const Text('Sign In', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => AuthModal.show(context, isSignUp: true),
+                          icon: const Icon(Icons.person_add_outlined, size: 16),
+                          label: const Text('Create Account', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryGreen,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => authProvider.signOut(),
+                      icon: const Icon(Icons.logout, size: 18, color: AppTheme.errorRed),
+                      label: const Text('Sign Out', style: TextStyle(color: AppTheme.errorRed, fontWeight: FontWeight.w600)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Scheme Records Quick Navigation
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppTheme.borderSubtle),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryGreenLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.folder_shared_outlined, color: AppTheme.primaryGreen, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'My Scheme Records',
+                            style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppTheme.textDark),
+                          ),
+                          Text(
+                            '$totalSchemes Scheme${totalSchemes == 1 ? "" : "s"} saved & generated',
+                            style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.textMuted),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (ctx) => const SavedScreen()),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
                 SizedBox(
                   width: double.infinity,
-                  child: authProvider.isGuest
-                      ? OutlinedButton.icon(
-                          onPressed: () => AuthModal.show(context),
-                          icon: const Icon(Icons.login_rounded, size: 18),
-                          label: const Text('Connect Google Account'),
-                        )
-                      : OutlinedButton.icon(
-                          onPressed: () => authProvider.signOut(),
-                          icon: const Icon(Icons.logout, size: 18, color: AppTheme.errorRed),
-                          label: const Text('Sign Out', style: TextStyle(color: AppTheme.errorRed)),
-                        ),
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (ctx) => const SavedScreen()),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text('View All Scheme Records', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  ),
                 ),
               ],
             ),
@@ -156,10 +264,10 @@ class _MenuScreenState extends State<MenuScreen> {
             const SizedBox(height: 20),
           ],
 
-          // Default Scheme Cover Details
-          const Text('Default Scheme Cover Details', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppTheme.textDark)),
+          // Account & Cover Details Customization
+          const Text('Account & Scheme Cover Customization', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppTheme.textDark)),
           const SizedBox(height: 4),
-          const Text('These details will automatically prefill every new scheme you generate.', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+          const Text('Customize your teaching credentials to automatically prefill on generated scheme cover pages and export documents.', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
           const SizedBox(height: 10),
 
           Container(
@@ -173,12 +281,18 @@ class _MenuScreenState extends State<MenuScreen> {
               children: [
                 TextFormField(
                   controller: _schoolController,
-                  decoration: const InputDecoration(labelText: 'Default School Name'),
+                  decoration: const InputDecoration(
+                    labelText: 'Default School Name',
+                    prefixIcon: Icon(Icons.account_balance_outlined, size: 20),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _teacherController,
-                  decoration: const InputDecoration(labelText: 'Teacher Name'),
+                  decoration: const InputDecoration(
+                    labelText: 'Teacher Name',
+                    prefixIcon: Icon(Icons.person_outline, size: 20),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -186,24 +300,35 @@ class _MenuScreenState extends State<MenuScreen> {
                     Expanded(
                       child: TextFormField(
                         controller: _tscController,
-                        decoration: const InputDecoration(labelText: 'TSC Number'),
+                        decoration: const InputDecoration(
+                          labelText: 'TSC Number',
+                          prefixIcon: Icon(Icons.badge_outlined, size: 20),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: TextFormField(
                         controller: _hodController,
-                        decoration: const InputDecoration(labelText: 'H.O.D Name'),
+                        decoration: const InputDecoration(
+                          labelText: 'H.O.D Name',
+                          prefixIcon: Icon(Icons.supervisor_account_outlined, size: 20),
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
+                  height: 44,
                   child: ElevatedButton(
                     onPressed: _saveProfile,
-                    child: const Text('Save Cover Details'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryGreen,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text('Save Account Profile', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                   ),
                 ),
               ],

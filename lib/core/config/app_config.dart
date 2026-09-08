@@ -5,22 +5,23 @@ class AppConfig {
   static const String adminEmail = 'ruttohkip4@gmail.com';
 
   // Supabase Configuration
-  // Fallbacks provided for compilation; overridden via --dart-define or Supabase init
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://placeholder-project.supabase.co',
+    defaultValue: '',
   );
 
   static const String supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_PUBLISHABLE_KEY',
-    defaultValue: 'placeholder-anon-key',
+    defaultValue: '',
   );
 
   // Storage Keys
   static const String guestSchemesKey = 'cbc_guest_schemes';
   static const String userThemeKey = 'cbc_theme_mode';
   static const String teacherProfileKey = 'cbc_teacher_profile';
+  static const String userAccountKey = 'cbc_user_account';
+  static const String userCloudSchemesKey = 'cbc_user_cloud_schemes';
 
-  // OAuth Redirect Scheme
+  // Auth Redirect Scheme
   static const String authRedirectUri = 'app.cbcschemes://login-callback';
 }

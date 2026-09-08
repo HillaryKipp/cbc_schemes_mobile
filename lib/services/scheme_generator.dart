@@ -3,7 +3,6 @@ import '../core/utils/calendar_utils.dart';
 import '../models/grade.dart';
 import '../models/subject.dart';
 import '../models/reference_book.dart';
-import '../models/strand.dart';
 import '../models/scheme.dart';
 import '../models/scheme_row.dart';
 import '../models/guest_scheme.dart';

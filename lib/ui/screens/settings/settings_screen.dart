@@ -97,7 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             Text(
                               authProvider.isGuest
                                   ? 'Schemes saved locally on device'
-                                  : (authProvider.user?.email ?? 'Connected with Google'),
+                                  : authProvider.userEmail,
                               style: const TextStyle(fontSize: 12.5, color: AppTheme.textMuted),
                             ),
                           ],
@@ -112,7 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? OutlinedButton.icon(
                             onPressed: () => AuthModal.show(context),
                             icon: const Icon(Icons.login_rounded, size: 18),
-                            label: const Text('Connect Google Account'),
+                            label: const Text('Sign In / Create Account'),
                           )
                         : OutlinedButton.icon(
                             onPressed: () => authProvider.signOut(),

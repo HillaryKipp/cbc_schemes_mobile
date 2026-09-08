@@ -24,83 +24,46 @@ class SchemesScreen extends StatefulWidget {
 
 class _SchemesScreenState extends State<SchemesScreen> {
   final _curriculum = CurriculumService.instance;
+  final TextEditingController _searchController = TextEditingController();
 
-  String _selectedTermFilter = 'All Terms';
-  late Grade _grade;
-  late Subject _subject;
   bool _isLoading = true;
   List<Grade> _allGrades = [];
-  List<Subject> _allSubjects = [];
+  Grade? _selectedGrade; // null means 'All Grades'
+  String _selectedTerm = 'Term 3'; // 'All Terms', 'Term 1', 'Term 2', 'Term 3'
+  String _searchQuery = '';
+
+  // Map of gradeId -> List<Subject>
+  final Map<String, List<Subject>> _gradeSubjectsMap = {};
 
   @override
   void initState() {
     super.initState();
+    if (widget.initialQuery != null) {
+      _searchController.text = widget.initialQuery!;
+      _searchQuery = widget.initialQuery!.toLowerCase();
+    }
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     _allGrades = await _curriculum.getGrades();
 
-    _grade = widget.selectedGrade ??
-        _allGrades.firstWhere((g) => g.id == 'grade-6', orElse: () => _allGrades.first);
+    _selectedGrade = widget.selectedGrade;
 
-    _allSubjects = await _curriculum.getSubjects(_grade.id);
-    _subject = widget.selectedSubject ??
-        _allSubjects.firstWhere((s) => s.name.toLowerCase().contains('math'), orElse: () => _allSubjects.first);
+    // Preload subjects for all grades
+    for (final grade in _allGrades) {
+      final subs = await _curriculum.getSubjects(grade.id);
+      _gradeSubjectsMap[grade.id] = subs;
+    }
 
     setState(() => _isLoading = false);
-  }
-
-  void _showFilterSheet() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Filter Schemes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<Grade>(
-                value: _grade,
-                decoration: const InputDecoration(labelText: 'Grade'),
-                items: _allGrades.map((g) => DropdownMenuItem(value: g, child: Text(g.name))).toList(),
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => _grade = val);
-                    _curriculum.getSubjects(val.id).then((subs) {
-                      setState(() {
-                        _allSubjects = subs;
-                        if (subs.isNotEmpty) _subject = subs.first;
-                      });
-                    });
-                    Navigator.pop(ctx);
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<Subject>(
-                value: _subject,
-                decoration: const InputDecoration(labelText: 'Subject'),
-                items: _allSubjects.map((s) => DropdownMenuItem(value: s, child: Text(s.name))).toList(),
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => _subject = val);
-                    Navigator.pop(ctx);
-                  }
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   @override
@@ -111,39 +74,43 @@ class _SchemesScreenState extends State<SchemesScreen> {
       );
     }
 
-    final terms = [
-      (
-        name: 'Term 3',
-        year: 2026,
-        weeks: 9,
-        lessons: 45,
-        color: AppTheme.primaryGreen,
-        lightColor: AppTheme.primaryGreenLight,
-        icon: Icons.grid_view_rounded,
-      ),
-      (
-        name: 'Term 2',
-        year: 2026,
-        weeks: 14,
-        lessons: 70,
-        color: AppTheme.accentBlue,
-        lightColor: AppTheme.accentBlueLight,
-        icon: Icons.description_outlined,
-      ),
-      (
-        name: 'Term 1',
-        year: 2026,
-        weeks: 13,
-        lessons: 65,
-        color: AppTheme.accentOrange,
-        lightColor: AppTheme.accentOrangeLight,
-        icon: Icons.article_outlined,
-      ),
-    ];
+    // Determine list of displayed grades
+    final activeGrades = _selectedGrade != null
+        ? [_selectedGrade!]
+        : _allGrades;
 
-    final filteredTerms = _selectedTermFilter == 'All Terms'
-        ? terms
-        : terms.where((t) => t.name == _selectedTermFilter).toList();
+    // Build the list of scheme items matching current search and filters
+    final List<({Grade grade, Subject subject, String term, int year, int weeks, int lessons})> schemeItems = [];
+
+    final termsToInclude = _selectedTerm == 'All Terms'
+        ? ['Term 3', 'Term 2', 'Term 1']
+        : [_selectedTerm];
+
+    for (final g in activeGrades) {
+      final subjects = _gradeSubjectsMap[g.id] ?? [];
+      for (final s in subjects) {
+        // Check search filter
+        final matchSearch = _searchQuery.isEmpty ||
+            g.name.toLowerCase().contains(_searchQuery) ||
+            s.name.toLowerCase().contains(_searchQuery) ||
+            (s.code?.toLowerCase().contains(_searchQuery) ?? false);
+
+        if (matchSearch) {
+          for (final t in termsToInclude) {
+            final weeks = t == 'Term 3' ? 9 : (t == 'Term 2' ? 14 : 13);
+            final lessons = weeks * 5;
+            schemeItems.add((
+              grade: g,
+              subject: s,
+              term: t,
+              year: 2026,
+              weeks: weeks,
+              lessons: lessons,
+            ));
+          }
+        }
+      }
+    }
 
     return Scaffold(
       backgroundColor: AppTheme.surfaceBg,
@@ -154,96 +121,160 @@ class _SchemesScreenState extends State<SchemesScreen> {
                 onPressed: () => Navigator.pop(context),
               )
             : null,
-        title: const Text('Search Results', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list_rounded, size: 22),
-            onPressed: _showFilterSheet,
-          ),
-        ],
+        title: const Text('Available CBC Schemes', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
       ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      body: Column(
         children: [
-          // Title
-          Text(
-            '${_grade.name} ${_subject.name}',
-            style: const TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.textDark,
-            ),
-          ),
-          const SizedBox(height: 2),
-          const Text(
-            'Schemes of Work',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textDark,
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // Term Filter Pills
-          SizedBox(
-            height: 36,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
+          // Search & Filter Header
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            color: Colors.white,
+            child: Column(
               children: [
-                _buildFilterPill('All Terms'),
-                _buildFilterPill('Term 1'),
-                _buildFilterPill('Term 2'),
-                _buildFilterPill('Term 3'),
+                // Search Field
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search schemes by grade or subject...',
+                      hintStyle: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                      prefixIcon: const Icon(Icons.search, color: AppTheme.primaryGreen, size: 20),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18, color: AppTheme.textMuted),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 11, horizontal: 12),
+                    ),
+                    onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                // Grade Filter Chips (Horizontal List)
+                SizedBox(
+                  height: 34,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      _buildGradeChip(null, 'All Grades'),
+                      ..._allGrades.map((g) => _buildGradeChip(g, g.name)),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // Term Filter Chips
+                SizedBox(
+                  height: 32,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      _buildTermChip('Term 3'),
+                      _buildTermChip('Term 2'),
+                      _buildTermChip('Term 1'),
+                      _buildTermChip('All Terms'),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
 
-          const SizedBox(height: 16),
+          const Divider(height: 1),
 
-          // Term Scheme Result Cards
-          ...filteredTerms.map((item) {
-            return _buildTermSchemeCard(
-              context: context,
-              termName: item.name,
-              year: item.year,
-              weeks: item.weeks,
-              lessons: item.lessons,
-              color: item.color,
-              lightColor: item.lightColor,
-              icon: item.icon,
-            );
-          }),
+          // Schemes List View
+          Expanded(
+            child: schemeItems.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.search_off_rounded, size: 48, color: AppTheme.textMuted),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'No Schemes Found',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textDark),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Try clearing filters or changing search keywords.',
+                            style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                          ),
+                          const SizedBox(height: 14),
+                          TextButton(
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchQuery = '';
+                                _selectedGrade = null;
+                                _selectedTerm = 'Term 3';
+                              });
+                            },
+                            child: const Text('Reset All Filters'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: schemeItems.length,
+                    itemBuilder: (ctx, idx) {
+                      final item = schemeItems[idx];
+                      return _buildSchemeCard(
+                        context: context,
+                        grade: item.grade,
+                        subject: item.subject,
+                        termName: item.term,
+                        year: item.year,
+                        weeks: item.weeks,
+                        lessons: item.lessons,
+                      );
+                    },
+                  ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildFilterPill(String label) {
-    final isSelected = _selectedTermFilter == label;
-
+  Widget _buildGradeChip(Grade? grade, String label) {
+    final isSelected = _selectedGrade == grade;
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.only(right: 6),
       child: InkWell(
-        onTap: () => setState(() => _selectedTermFilter = label),
-        borderRadius: BorderRadius.circular(20),
+        onTap: () => setState(() => _selectedGrade = grade),
+        borderRadius: BorderRadius.circular(18),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
             color: isSelected ? AppTheme.primaryGreen : Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: isSelected ? AppTheme.primaryGreen : AppTheme.borderSubtle,
-              width: 1.2,
+              width: 1.1,
             ),
           ),
           alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               color: isSelected ? Colors.white : AppTheme.textDark,
             ),
           ),
@@ -252,18 +283,59 @@ class _SchemesScreenState extends State<SchemesScreen> {
     );
   }
 
-  Widget _buildTermSchemeCard({
+  Widget _buildTermChip(String term) {
+    final isSelected = _selectedTerm == term;
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: InkWell(
+        onTap: () => setState(() => _selectedTerm = term),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: isSelected ? AppTheme.primaryGreenLight : const Color(0xFFF3F4F6),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? AppTheme.primaryGreen : Colors.transparent,
+              width: 1.1,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            term,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color: isSelected ? AppTheme.primaryGreen : AppTheme.textDark,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSchemeCard({
     required BuildContext context,
+    required Grade grade,
+    required Subject subject,
     required String termName,
     required int year,
     required int weeks,
     required int lessons,
-    required Color color,
-    required Color lightColor,
-    required IconData icon,
   }) {
+    Color cardColor = AppTheme.primaryGreen;
+    Color lightColor = AppTheme.primaryGreenLight;
+
+    if (termName == 'Term 2') {
+      cardColor = AppTheme.accentBlue;
+      lightColor = AppTheme.accentBlueLight;
+    } else if (termName == 'Term 1') {
+      cardColor = AppTheme.accentOrange;
+      lightColor = AppTheme.accentOrangeLight;
+    }
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -276,40 +348,46 @@ class _SchemesScreenState extends State<SchemesScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icon Box
               Container(
-                width: 48,
-                height: 48,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: lightColor,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
-                child: Icon(icon, color: color, size: 24),
+                child: Icon(Icons.menu_book_rounded, color: cardColor, size: 22),
               ),
-              const SizedBox(width: 14),
-
-              // Title & Term Badge
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${_grade.name} ${_subject.name}',
+                      '${grade.name} ${subject.name}',
                       style: const TextStyle(
-                        fontSize: 15.5,
+                        fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: AppTheme.textDark,
                       ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      '$termName – $year',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: color,
-                      ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Text(
+                          '$termName – $year',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: cardColor,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '•  $weeks Wks ($lessons Lessons)',
+                          style: const TextStyle(fontSize: 12, color: AppTheme.textMuted, fontWeight: FontWeight.w500),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -317,27 +395,13 @@ class _SchemesScreenState extends State<SchemesScreen> {
             ],
           ),
 
-          const SizedBox(height: 10),
-
-          // Metadata text: 9 Weeks • 45 Lessons
-          Text(
-            '$weeks Weeks  •  $lessons Lessons',
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppTheme.textMuted,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           const Text(
-            'Comprehensive scheme of work aligned to CBC curriculum.',
-            style: TextStyle(
-              fontSize: 12.5,
-              color: Color(0xFF4B5563),
-            ),
+            'Complete KICD-compliant CBC scheme with outcomes, activities, inquiry questions & assessments.',
+            style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
           ),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
           // Action Buttons
           Row(
@@ -349,8 +413,8 @@ class _SchemesScreenState extends State<SchemesScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (ctx) => SchemeDetailScreen(
-                          grade: _grade,
-                          subject: _subject,
+                          grade: grade,
+                          subject: subject,
                           termName: termName,
                           year: year,
                           weeks: weeks,
@@ -361,23 +425,23 @@ class _SchemesScreenState extends State<SchemesScreen> {
                   },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppTheme.textDark,
-                    padding: const EdgeInsets.symmetric(vertical: 11),
-                    side: const BorderSide(color: AppTheme.borderSubtle, width: 1.2),
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    side: const BorderSide(color: AppTheme.borderSubtle, width: 1.1),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: const Text('Preview', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                  child: const Text('Preview', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
-                child: ElevatedButton(
+                child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (ctx) => GenerateWizardScreen(
-                          initialGrade: _grade,
-                          initialSubject: _subject,
+                          initialGrade: grade,
+                          initialSubject: subject,
                           initialTerm: termName,
                           initialYear: year,
                           initialWeeks: weeks,
@@ -386,12 +450,13 @@ class _SchemesScreenState extends State<SchemesScreen> {
                       ),
                     );
                   },
+                  icon: const Icon(Icons.auto_awesome, size: 15),
+                  label: const Text('Generate Scheme', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: color,
-                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    backgroundColor: cardColor,
+                    padding: const EdgeInsets.symmetric(vertical: 9),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: const Text('Generate Scheme', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
                 ),
               ),
             ],

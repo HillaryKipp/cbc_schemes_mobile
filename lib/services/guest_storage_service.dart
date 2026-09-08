@@ -102,4 +102,25 @@ class GuestStorageService {
       return {};
     }
   }
+
+  /// Save user account info
+  Future<void> saveUserAccount(Map<String, dynamic> accountData) async {
+    await prefs.setString(AppConfig.userAccountKey, jsonEncode(accountData));
+  }
+
+  /// Load cached user account info
+  Map<String, dynamic>? getUserAccount() {
+    try {
+      final jsonStr = prefs.getString(AppConfig.userAccountKey);
+      if (jsonStr == null || jsonStr.isEmpty) return null;
+      return jsonDecode(jsonStr) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Clear user account on logout
+  Future<void> clearUserAccount() async {
+    await prefs.remove(AppConfig.userAccountKey);
+  }
 }

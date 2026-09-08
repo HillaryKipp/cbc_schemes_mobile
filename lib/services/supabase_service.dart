@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config/app_config.dart';
+import 'guest_storage_service.dart';
 
 class SupabaseService {
   static SupabaseService? _instance;
@@ -17,6 +18,11 @@ class SupabaseService {
 
   /// Initialize Supabase
   Future<void> initialize() async {
+    if (AppConfig.supabaseUrl.isEmpty || AppConfig.supabaseAnonKey.isEmpty) {
+      debugPrint('Supabase not configured. Operating in local account & curriculum mode.');
+      _isInitialized = false;
+      return;
+    }
     try {
       await Supabase.initialize(
         url: AppConfig.supabaseUrl,
@@ -30,22 +36,85 @@ class SupabaseService {
     }
   }
 
-  /// Sign In with Google OAuth
-  Future<bool> signInWithGoogle() async {
-    if (!_isInitialized) return false;
+  /// Sign Up with Email and Password
+  Future<AuthResponse?> signUpWithEmail(
+    String email,
+    String password, {
+    String? fullName,
+    String? schoolName,
+    String? tscNumber,
+  }) async {
+    if (!_isInitialized) {
+      // Local fallback account storage
+      final localAccount = {
+        'id': 'local-${DateTime.now().millisecondsSinceEpoch}',
+        'email': email.trim().toLowerCase(),
+        'full_name': fullName ?? 'Teacher',
+        'school_name': schoolName ?? '',
+        'tsc_number': tscNumber ?? '',
+        'created_at': DateTime.now().toIso8601String(),
+      };
+      await GuestStorageService.instance.saveUserAccount(localAccount);
+      if (schoolName != null || fullName != null || tscNumber != null) {
+        await GuestStorageService.instance.saveTeacherProfile(
+          schoolName: schoolName,
+          teacherName: fullName,
+          tscNumber: tscNumber,
+        );
+      }
+      return null;
+    }
+
     try {
-      return await client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: AppConfig.authRedirectUri,
+      final res = await client.auth.signUp(
+        email: email.trim(),
+        password: password,
+        data: {
+          'full_name': fullName,
+          'school_name': schoolName,
+          'tsc_number': tscNumber,
+        },
       );
+      return res;
     } catch (e) {
-      debugPrint('Error signing in with Google: $e');
-      return false;
+      debugPrint('Error signing up with email: $e');
+      rethrow;
+    }
+  }
+
+  /// Sign In with Email and Password
+  Future<AuthResponse?> signInWithEmail(String email, String password) async {
+    if (!_isInitialized) {
+      final local = GuestStorageService.instance.getUserAccount();
+      if (local != null && local['email'] == email.trim().toLowerCase()) {
+        return null;
+      }
+      // Create/sign into local account
+      final localAccount = {
+        'id': 'local-${DateTime.now().millisecondsSinceEpoch}',
+        'email': email.trim().toLowerCase(),
+        'full_name': 'Teacher',
+        'created_at': DateTime.now().toIso8601String(),
+      };
+      await GuestStorageService.instance.saveUserAccount(localAccount);
+      return null;
+    }
+
+    try {
+      final res = await client.auth.signInWithPassword(
+        email: email.trim(),
+        password: password,
+      );
+      return res;
+    } catch (e) {
+      debugPrint('Error signing in with email: $e');
+      rethrow;
     }
   }
 
   /// Sign Out
   Future<void> signOut() async {
+    await GuestStorageService.instance.clearUserAccount();
     if (!_isInitialized) return;
     try {
       await client.auth.signOut();
@@ -54,14 +123,14 @@ class SupabaseService {
     }
   }
 
-  /// Check if current user is an Admin via user_roles table
+  /// Check if current user is an Admin via user_roles table or admin email
   Future<bool> checkIsAdmin() async {
+    final email = currentUser?.email ?? GuestStorageService.instance.getUserAccount()?['email'];
+    if (email?.toLowerCase() == AppConfig.adminEmail.toLowerCase()) {
+      return true;
+    }
     if (!_isInitialized || currentUser == null) return false;
     try {
-      // Special check for hardcoded admin email or database role
-      if (currentUser?.email?.toLowerCase() == AppConfig.adminEmail.toLowerCase()) {
-        return true;
-      }
       final response = await client
           .from('user_roles')
           .select('role')
@@ -74,7 +143,7 @@ class SupabaseService {
       return false;
     } catch (e) {
       debugPrint('Error checking admin role: $e');
-      return currentUser?.email?.toLowerCase() == AppConfig.adminEmail.toLowerCase();
+      return false;
     }
   }
 }
