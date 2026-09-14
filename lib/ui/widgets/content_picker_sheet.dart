@@ -175,7 +175,7 @@ class _ContentPickerSheetState extends State<ContentPickerSheet> {
                           style: TextStyle(
                             fontSize: 13.5,
                             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                            color: isSelected ? AppTheme.textDark : AppTheme.textDark.withOpacity(0.85),
+                            color: isSelected ? AppTheme.textDark : AppTheme.textDark.withValues(alpha: 0.85),
                           ),
                         ),
                         onChanged: (bool? val) {

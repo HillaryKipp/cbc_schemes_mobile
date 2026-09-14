@@ -107,7 +107,7 @@ class _SchemeRowCardState extends State<SchemeRowCard> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: _isExpanded ? AppTheme.primaryEmerald.withOpacity(0.5) : AppTheme.borderSubtle,
+          color: _isExpanded ? AppTheme.primaryEmerald.withValues(alpha: 0.5) : AppTheme.borderSubtle,
           width: _isExpanded ? 1.5 : 1,
         ),
       ),
@@ -122,7 +122,7 @@ class _SchemeRowCardState extends State<SchemeRowCard> {
                 StatBadge(
                   label: 'Wk ${row.weekNumber} • Lsn ${row.lessonNumber}',
                   icon: Icons.calendar_today_outlined,
-                  color: AppTheme.primaryEmerald.withOpacity(0.12),
+                  color: AppTheme.primaryEmerald.withValues(alpha: 0.12),
                   textColor: AppTheme.primaryEmeraldDark,
                 ),
                 const SizedBox(width: 8),
@@ -203,7 +203,7 @@ class _SchemeRowCardState extends State<SchemeRowCard> {
               row.subStrandName.isNotEmpty ? row.subStrandName : 'General Planning Slot',
               style: TextStyle(
                 fontSize: 12.5,
-                color: AppTheme.textDark.withOpacity(0.8),
+                color: AppTheme.textDark.withValues(alpha: 0.8),
                 fontWeight: FontWeight.w500,
               ),
             ),

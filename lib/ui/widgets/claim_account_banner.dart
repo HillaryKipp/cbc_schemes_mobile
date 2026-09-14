@@ -24,7 +24,7 @@ class ClaimAccountBanner extends StatelessWidget {
         border: Border.all(color: const Color(0xFFFDE68A), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.amber.withOpacity(0.08),
+            color: Colors.amber.withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -38,7 +38,7 @@ class ClaimAccountBanner extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: AppTheme.accentGold.withOpacity(0.15),
+                  color: AppTheme.accentGold.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(

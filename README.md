@@ -30,7 +30,7 @@ Built with **Flutter**, **Supabase Backend (PostgreSQL + RLS)**, **Material 3 (K
    - Direct WiFi/Bluetooth printing with `printing`.
    - Formatted Word `.docx` file generator with document XML tables.
 6. **Admin Management Portal**:
-   - Automatically accessible when authenticated user has admin role in `user_roles` table or is `ruttohkip4@gmail.com`.
+   - Automatically accessible when authenticated user has admin role in `user_roles` table or matches configured `ADMIN_EMAIL`.
    - Control monetization, payment gates, ads, and price per scheme.
 
 ---

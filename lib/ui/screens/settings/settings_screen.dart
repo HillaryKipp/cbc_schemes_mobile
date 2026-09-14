@@ -79,7 +79,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         radius: 22,
                         backgroundColor: authProvider.isGuest
                             ? const Color(0xFFFEF3C7)
-                            : AppTheme.primaryEmerald.withOpacity(0.12),
+                            : AppTheme.primaryEmerald.withValues(alpha: 0.12),
                         child: Icon(
                           authProvider.isGuest ? Icons.person_outline : Icons.verified_user_rounded,
                           color: authProvider.isGuest ? AppTheme.accentGold : AppTheme.primaryEmerald,
@@ -205,7 +205,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ListTile(
                   leading: const Icon(Icons.support_agent_outlined, color: AppTheme.primaryEmerald),
                   title: const Text('Support Email'),
-                  subtitle: const Text(AppConfig.adminEmail),
+                  subtitle: const Text(AppConfig.supportEmail),
                 ),
               ],
             ),

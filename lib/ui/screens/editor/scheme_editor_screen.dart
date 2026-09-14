@@ -4,11 +4,9 @@ import '../../../core/config/theme.dart';
 import '../../../models/scheme.dart';
 import '../../../models/scheme_row.dart';
 import '../../../services/pdf_export_service.dart';
-import '../../../state/auth_provider.dart';
+import '../../../services/scheme_share_service.dart';
 import '../../../state/scheme_editor_provider.dart';
-import '../../widgets/claim_account_banner.dart';
 import '../../widgets/content_picker_sheet.dart';
-import '../auth/auth_modal.dart';
 import '../preview/scheme_preview_screen.dart';
 
 class SchemeEditorScreen extends StatefulWidget {
@@ -95,160 +93,224 @@ class _SchemeEditorScreenState extends State<SchemeEditorScreen> with SingleTick
     );
   }
 
+  void _showShareOptions(BuildContext context, Scheme scheme) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Share or Export Scheme',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.textDark),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFDCFCE7),
+                  child: Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF16A34A)),
+                ),
+                title: const Text('Share via WhatsApp', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                subtitle: const Text('Send scheme summary and PDF directly to WhatsApp contacts'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  SchemeShareService.shareViaWhatsApp(context, scheme);
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFDBEAFE),
+                  child: Icon(Icons.email_outlined, color: Color(0xFF2563EB)),
+                ),
+                title: const Text('Share via Email', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                subtitle: const Text('Send formal email with scheme PDF attachment'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  SchemeShareService.shareViaEmail(context, scheme);
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFF3F4F6),
+                  child: Icon(Icons.share_outlined, color: AppTheme.textDark),
+                ),
+                title: const Text('Share to Other Apps', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                subtitle: const Text('Open Android share sheet for Telegram, Drive, Bluetooth'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  SchemeShareService.shareViaSocialMedia(context, scheme);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final editorProvider = context.watch<SchemeEditorProvider>();
-    final authProvider = context.watch<AuthProvider>();
-    final isGuest = widget.scheme.id.startsWith('guest-') || authProvider.isGuest;
+    final currentScheme = editorProvider.updatedScheme;
     final rows = editorProvider.rows;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: AppBar(
-          backgroundColor: AppTheme.primaryGreen,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Text(
-            '${widget.scheme.gradeName ?? "Grade 6"} ${widget.scheme.subjectName ?? "Mathematics"} – ${widget.scheme.termName} (${widget.scheme.year})',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14.5,
-              fontWeight: FontWeight.w700,
+    return PopScope(
+      canPop: true,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: AppBar(
+            backgroundColor: AppTheme.primaryGreen,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
+              onPressed: () => Navigator.maybePop(context),
             ),
-            overflow: TextOverflow.ellipsis,
-          ),
-          actions: [
-            // Saved status
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.cloud_done_outlined, color: Colors.white, size: 16),
-                const SizedBox(width: 4),
-                Text(
-                  editorProvider.saveStatus == SaveStatus.saving ? 'Saving...' : 'Saved',
-                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
-                ),
-              ],
+            title: Text(
+              '${widget.scheme.gradeName ?? "Grade 6"} ${widget.scheme.subjectName ?? "Mathematics"} – ${widget.scheme.termName}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w700,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(width: 8),
+            actions: [
+              // Share Button
+              IconButton(
+                icon: const Icon(Icons.share_rounded, color: Colors.white, size: 20),
+                tooltip: 'Share via WhatsApp / Email',
+                onPressed: () => _showShareOptions(context, currentScheme),
+              ),
 
-            // Preview Pill
-            InkWell(
-              onTap: () {
-                final currentScheme = editorProvider.updatedScheme;
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (ctx) => SchemePreviewScreen(scheme: currentScheme)),
-                );
-              },
-              borderRadius: BorderRadius.circular(6),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.18),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.white.withOpacity(0.4)),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.visibility_outlined, color: Colors.white, size: 14),
-                    SizedBox(width: 4),
-                    Text('Preview', style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w600)),
-                  ],
+              // Preview Pill
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (ctx) => SchemePreviewScreen(scheme: currentScheme)),
+                  );
+                },
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.visibility_outlined, color: Colors.white, size: 14),
+                      SizedBox(width: 4),
+                      Text('Preview', style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
+              const SizedBox(width: 8),
 
-            // Download PDF Button
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: ElevatedButton.icon(
-                onPressed: () => PdfExportService.shareSchemePdf(editorProvider.updatedScheme),
-                icon: const Icon(Icons.download_rounded, color: AppTheme.primaryGreen, size: 15),
-                label: const Text('Download PDF', style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.w700, fontSize: 11.5)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  visualDensity: VisualDensity.compact,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              // Download PDF Button
+              Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: ElevatedButton.icon(
+                  onPressed: () => PdfExportService.shareSchemePdf(currentScheme),
+                  icon: const Icon(Icons.download_rounded, color: AppTheme.primaryGreen, size: 15),
+                  label: const Text('Download', style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.w700, fontSize: 11.5)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    visualDensity: VisualDensity.compact,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  ),
                 ),
+              ),
+            ],
+          ),
+        ),
+        body: Column(
+          children: [
+            // Tab Bar (Table View | Front Page | Calendar)
+            Container(
+              color: Colors.white,
+              child: TabBar(
+                controller: _tabController,
+                labelColor: AppTheme.primaryGreen,
+                unselectedLabelColor: AppTheme.textMuted,
+                indicatorColor: AppTheme.primaryGreen,
+                indicatorWeight: 3,
+                labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13.5),
+                tabs: const [
+                  Tab(text: 'Table View'),
+                  Tab(text: 'Cover Page'),
+                  Tab(text: 'Calendar'),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+
+            // Subheader Info bar
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: const Color(0xFFF9FAFB),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${rows.length} Lessons  •  ${(rows.length / 5).ceil()} Weeks',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      const Icon(Icons.check_circle_outline, color: AppTheme.primaryGreen, size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        editorProvider.saveStatus == SaveStatus.saving ? 'Saving...' : 'Auto-Saved',
+                        style: const TextStyle(fontSize: 11.5, color: AppTheme.primaryGreen, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Tab Views
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  // TAB 1: Table View Spreadsheet
+                  _buildSpreadsheetTableView(rows, editorProvider),
+
+                  // TAB 2: Front Page Cover View
+                  _buildFrontPageView(widget.scheme),
+
+                  // TAB 3: Calendar Breakdown View
+                  _buildCalendarView(rows),
+                ],
               ),
             ),
           ],
         ),
       ),
-      body: Column(
-        children: [
-          // Guest Banner
-          if (isGuest)
-            ClaimAccountBanner(
-              onClaimPressed: () => AuthModal.show(context),
-            ),
-
-          // Tab Bar (Table View | Front Page | Calendar)
-          Container(
-            color: Colors.white,
-            child: TabBar(
-              controller: _tabController,
-              labelColor: AppTheme.primaryGreen,
-              unselectedLabelColor: AppTheme.textMuted,
-              indicatorColor: AppTheme.primaryGreen,
-              indicatorWeight: 3,
-              labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
-              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13.5),
-              tabs: const [
-                Tab(text: 'Table View'),
-                Tab(text: 'Front Page'),
-                Tab(text: 'Calendar'),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-
-          // Subheader Info bar
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: const Color(0xFFF9FAFB),
-            child: Text(
-              '${rows.length} Lessons  •  ${(rows.length / 5).ceil()} Weeks',
-              style: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textMuted,
-              ),
-            ),
-          ),
-
-          // Tab Views
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                // TAB 1: Table View (Screen 7 spreadsheet in design)
-                _buildSpreadsheetTableView(rows, editorProvider),
-
-                // TAB 2: Front Page Cover View
-                _buildFrontPageView(widget.scheme),
-
-                // TAB 3: Calendar Breakdown View
-                _buildCalendarView(rows),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
-  // TAB 1: 10-Column Spreadsheet matching Screen 7
+  // TAB 1: 10-Column Spreadsheet
   Widget _buildSpreadsheetTableView(List<SchemeRow> rows, SchemeEditorProvider editorProvider) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,

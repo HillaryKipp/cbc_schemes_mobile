@@ -59,7 +59,7 @@ class _SchemesScreenState extends State<SchemesScreen> {
 
     // Preload subjects for all grades
     for (final grade in _allGrades) {
-      final subs = await _curriculum.getSubjects(grade.id);
+      final subs = await _curriculum.getSubjects(grade.id, grade: grade);
       _gradeSubjectsMap[grade.id] = subs;
     }
 
@@ -112,17 +112,19 @@ class _SchemesScreenState extends State<SchemesScreen> {
       }
     }
 
-    return Scaffold(
-      backgroundColor: AppTheme.surfaceBg,
-      appBar: AppBar(
-        leading: Navigator.canPop(context)
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new, size: 18),
-                onPressed: () => Navigator.pop(context),
-              )
-            : null,
-        title: const Text('Available CBC Schemes', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-      ),
+    return PopScope(
+      canPop: true,
+      child: Scaffold(
+        backgroundColor: AppTheme.surfaceBg,
+        appBar: AppBar(
+          leading: Navigator.canPop(context)
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+                  onPressed: () => Navigator.maybePop(context),
+                )
+              : null,
+          title: const Text('Available CBC Schemes', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+        ),
       body: Column(
         children: [
           // Search & Filter Header
@@ -249,8 +251,9 @@ class _SchemesScreenState extends State<SchemesScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildGradeChip(Grade? grade, String label) {
     final isSelected = _selectedGrade == grade;

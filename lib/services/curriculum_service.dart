@@ -16,6 +16,7 @@ class CurriculumService {
   CurriculumService._();
 
   final _supabase = SupabaseService.instance;
+  List<Grade> _cachedGrades = [];
 
   /// Fetch all grades
   Future<List<Grade>> getGrades() async {
@@ -26,17 +27,19 @@ class CurriculumService {
             .select()
             .order('order_index', ascending: true);
         if (res.isNotEmpty) {
-          return (res as List).map((e) => Grade.fromJson(e as Map<String, dynamic>)).toList();
+          _cachedGrades = (res as List).map((e) => Grade.fromJson(e as Map<String, dynamic>)).toList();
+          return _cachedGrades;
         }
       } catch (e) {
         debugPrint('Error loading grades from Supabase: $e');
       }
     }
-    return SeedData.defaultGrades;
+    _cachedGrades = SeedData.defaultGrades;
+    return _cachedGrades;
   }
 
   /// Fetch subjects for a specific grade
-  Future<List<Subject>> getSubjects(String gradeId) async {
+  Future<List<Subject>> getSubjects(String gradeId, {Grade? grade}) async {
     if (_supabase.isInitialized) {
       try {
         final res = await _supabase.client
@@ -51,18 +54,27 @@ class CurriculumService {
         debugPrint('Error loading subjects from Supabase: $e');
       }
     }
-    final filtered = SeedData.defaultSubjects.where((s) => s.gradeId == gradeId).toList();
-    if (filtered.isNotEmpty) return filtered;
-    // Fallback template subjects if grade has no specific seeds
-    return [
-      Subject(id: 'subj-$gradeId-math', gradeId: gradeId, name: 'Mathematics', code: 'MATH', orderIndex: 1),
-      Subject(id: 'subj-$gradeId-eng', gradeId: gradeId, name: 'English Language', code: 'ENG', orderIndex: 2),
-      Subject(id: 'subj-$gradeId-kisw', gradeId: gradeId, name: 'Kiswahili', code: 'KISW', orderIndex: 3),
-      Subject(id: 'subj-$gradeId-sci', gradeId: gradeId, name: 'Integrated Science', code: 'SCI', orderIndex: 4),
-      Subject(id: 'subj-$gradeId-agri', gradeId: gradeId, name: 'Agriculture & Nutrition', code: 'AGRI', orderIndex: 5),
-      Subject(id: 'subj-$gradeId-cre', gradeId: gradeId, name: 'Religious Education', code: 'RE', orderIndex: 6),
-      Subject(id: 'subj-$gradeId-arts', gradeId: gradeId, name: 'Creative Arts & Sports', code: 'ARTS', orderIndex: 7),
-    ];
+
+    // Resolve grade from argument, cache, or seed data to ensure grade-level accuracy
+    Grade? resolvedGrade = grade;
+    if (resolvedGrade == null) {
+      for (final g in _cachedGrades) {
+        if (g.id == gradeId) {
+          resolvedGrade = g;
+          break;
+        }
+      }
+    }
+    if (resolvedGrade == null) {
+      for (final g in SeedData.defaultGrades) {
+        if (g.id == gradeId) {
+          resolvedGrade = g;
+          break;
+        }
+      }
+    }
+
+    return SeedData.getSubjectsForGrade(gradeId: gradeId, grade: resolvedGrade);
   }
 
   /// Fetch reference books for a subject
@@ -250,5 +262,135 @@ class CurriculumService {
       }
     }
     return SeedData.defaultAppSettings;
+  }
+
+  // -------------------------------------------------------------
+  // ADMIN CRUD OPERATIONS (Authenticated Supabase / Local Fallback)
+  // -------------------------------------------------------------
+
+  /// Create or Update Grade
+  Future<bool> saveGrade(Grade grade) async {
+    if (_supabase.isInitialized && _supabase.isAuthenticated) {
+      try {
+        await _supabase.client.from('grades').upsert(grade.toJson());
+        return true;
+      } catch (e) {
+        debugPrint('Error saving grade: $e');
+        rethrow;
+      }
+    }
+    return false;
+  }
+
+  /// Delete Grade
+  Future<bool> deleteGrade(String gradeId) async {
+    if (_supabase.isInitialized && _supabase.isAuthenticated) {
+      try {
+        await _supabase.client.from('grades').delete().eq('id', gradeId);
+        return true;
+      } catch (e) {
+        debugPrint('Error deleting grade: $e');
+        rethrow;
+      }
+    }
+    return false;
+  }
+
+  /// Create or Update Subject
+  Future<bool> saveSubject(Subject subject) async {
+    if (_supabase.isInitialized && _supabase.isAuthenticated) {
+      try {
+        await _supabase.client.from('subjects').upsert(subject.toJson());
+        return true;
+      } catch (e) {
+        debugPrint('Error saving subject: $e');
+        rethrow;
+      }
+    }
+    return false;
+  }
+
+  /// Delete Subject
+  Future<bool> deleteSubject(String subjectId) async {
+    if (_supabase.isInitialized && _supabase.isAuthenticated) {
+      try {
+        await _supabase.client.from('subjects').delete().eq('id', subjectId);
+        return true;
+      } catch (e) {
+        debugPrint('Error deleting subject: $e');
+        rethrow;
+      }
+    }
+    return false;
+  }
+
+  /// Create or Update Strand
+  Future<bool> saveStrand(Strand strand) async {
+    if (_supabase.isInitialized && _supabase.isAuthenticated) {
+      try {
+        await _supabase.client.from('strands').upsert(strand.toJson());
+        return true;
+      } catch (e) {
+        debugPrint('Error saving strand: $e');
+        rethrow;
+      }
+    }
+    return false;
+  }
+
+  /// Delete Strand
+  Future<bool> deleteStrand(String strandId) async {
+    if (_supabase.isInitialized && _supabase.isAuthenticated) {
+      try {
+        await _supabase.client.from('strands').delete().eq('id', strandId);
+        return true;
+      } catch (e) {
+        debugPrint('Error deleting strand: $e');
+        rethrow;
+      }
+    }
+    return false;
+  }
+
+  /// Create or Update SubStrand
+  Future<bool> saveSubStrand(SubStrand subStrand) async {
+    if (_supabase.isInitialized && _supabase.isAuthenticated) {
+      try {
+        await _supabase.client.from('sub_strands').upsert(subStrand.toJson());
+        return true;
+      } catch (e) {
+        debugPrint('Error saving sub_strand: $e');
+        rethrow;
+      }
+    }
+    return false;
+  }
+
+  /// Delete SubStrand
+  Future<bool> deleteSubStrand(String subStrandId) async {
+    if (_supabase.isInitialized && _supabase.isAuthenticated) {
+      try {
+        await _supabase.client.from('sub_strands').delete().eq('id', subStrandId);
+        return true;
+      } catch (e) {
+        debugPrint('Error deleting sub_strand: $e');
+        rethrow;
+      }
+    }
+    return false;
+  }
+
+  /// Save App Settings
+  Future<bool> saveAppSettings(AppSettings settings) async {
+    if (_supabase.isInitialized && _supabase.isAuthenticated) {
+      try {
+        await _supabase.client.from('app_settings').upsert(settings.toJson());
+        return true;
+      } catch (e) {
+        debugPrint('Error saving app settings: $e');
+        rethrow;
+      }
+    }
+    return false;
   }
 }

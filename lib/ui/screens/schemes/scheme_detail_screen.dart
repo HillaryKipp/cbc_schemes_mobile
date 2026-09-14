@@ -28,249 +28,251 @@ class SchemeDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.surfaceBg,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.ios_share, size: 20),
-            onPressed: () {
-              Share.share(
-                'CBC Scheme of Work: ${grade.name} ${subject.name} - $termName $year ($weeks Weeks, $lessons Lessons). Generate yours on CBC Schemes of Work app!',
-              );
-            },
+    return PopScope(
+      canPop: true,
+      child: Scaffold(
+        backgroundColor: AppTheme.surfaceBg,
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+            onPressed: () => Navigator.maybePop(context),
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Title Header
-            Text(
-              '${grade.name} ${subject.name}',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.textDark,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '$termName – $year',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.textDark,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'CBC Scheme of Work',
-              style: TextStyle(
-                fontSize: 13,
-                color: AppTheme.textMuted,
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Metadata Grid Card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppTheme.borderSubtle),
-              ),
-              child: Column(
-                children: [
-                  _buildMetaRow(Icons.description_outlined, 'Grade:', grade.name),
-                  const SizedBox(height: 10),
-                  _buildMetaRow(Icons.edit_note_outlined, 'Subject:', subject.name),
-                  const SizedBox(height: 10),
-                  _buildMetaRow(Icons.calendar_month_outlined, 'Term:', termName),
-                  const SizedBox(height: 10),
-                  _buildMetaRow(Icons.calendar_today_outlined, 'Year:', '$year'),
-                  const SizedBox(height: 10),
-                  _buildMetaRow(Icons.hourglass_empty_outlined, 'Weeks:', '$weeks'),
-                  const SizedBox(height: 10),
-                  _buildMetaRow(Icons.timer_outlined, 'Lessons:', '$lessons'),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Preview Section Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Preview',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textDark,
-                  ),
-                ),
-                OutlinedButton(
-                  onPressed: () => _navigateToGenerate(context),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    visualDensity: VisualDensity.compact,
-                    side: const BorderSide(color: AppTheme.borderSubtle),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  child: const Text(
-                    'View Full Scheme',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textDark),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            // Document Preview Paper Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.borderSubtle),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Text(
-                    'SCHEMES OF WORK',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subject.name.toUpperCase(),
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textDark),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${grade.name.toUpperCase()}  ${termName.toUpperCase()}',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textMuted),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // School Lines
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildLine('School:'),
-                        _buildLine('TSC Number:'),
-                        _buildLine('HOD Name:'),
-                        _buildLine('HOD Signature:'),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // Kenya Ministry Emblem Icon
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF9FAFB),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
-                        const Icon(Icons.shield_outlined, color: AppTheme.primaryGreen, size: 28),
-                        const SizedBox(height: 2),
-                        Text(
-                          'REPUBLIC OF KENYA\nMINISTRY OF EDUCATION',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: AppTheme.textDark.withOpacity(0.7)),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // Mini table header preview
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AppTheme.borderSubtle),
-                    ),
-                    child: Table(
-                      border: TableBorder.all(color: AppTheme.borderSubtle, width: 0.5),
-                      columnWidths: const {
-                        0: FixedColumnWidth(28),
-                        1: FixedColumnWidth(32),
-                        2: FlexColumnWidth(1.2),
-                        3: FlexColumnWidth(1.2),
-                        4: FlexColumnWidth(2.2),
-                      },
-                      children: [
-                        TableRow(
-                          decoration: const BoxDecoration(color: Color(0xFFF3F4F6)),
-                          children: [
-                            _buildMiniHeader('WEEK'),
-                            _buildMiniHeader('LESSON'),
-                            _buildMiniHeader('STRAND'),
-                            _buildMiniHeader('SUB-STRAND'),
-                            _buildMiniHeader('LEARNING OUTCOMES'),
-                          ],
-                        ),
-                        TableRow(
-                          children: [
-                            _buildMiniCell('1'),
-                            _buildMiniCell('1'),
-                            _buildMiniCell('Numbers'),
-                            _buildMiniCell('Rational Numbers'),
-                            _buildMiniCell('By the end of the lesson, the learner should be able to: identify rational numbers...'),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+          title: Text('${grade.name} ${subject.name}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.share_rounded, size: 20),
+              tooltip: 'Share',
+              onPressed: () {
+                Share.share(
+                  '📚 CBC Scheme of Work: ${grade.name} ${subject.name} - $termName $year ($weeks Weeks, $lessons Lessons).\n\nGenerate customized schemes instantly on the CBC Schemes of Work App!',
+                );
+              },
             ),
           ],
         ),
-      ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title Header
+              Text(
+                '${grade.name} ${subject.name}',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textDark,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '$termName – $year',
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.primaryGreen,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Kenyan Competency Based Curriculum (CBC) Scheme of Work',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.textMuted,
+                ),
+              ),
 
-      // Sticky Bottom Button
-      bottomSheet: Container(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: AppTheme.borderSubtle)),
+              const SizedBox(height: 16),
+
+              // Metadata Grid Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.borderSubtle),
+                ),
+                child: Column(
+                  children: [
+                    _buildMetaRow(Icons.description_outlined, 'Grade:', grade.name),
+                    const SizedBox(height: 10),
+                    _buildMetaRow(Icons.edit_note_outlined, 'Subject:', subject.name),
+                    const SizedBox(height: 10),
+                    _buildMetaRow(Icons.calendar_month_outlined, 'Term:', termName),
+                    const SizedBox(height: 10),
+                    _buildMetaRow(Icons.calendar_today_outlined, 'Year:', '$year'),
+                    const SizedBox(height: 10),
+                    _buildMetaRow(Icons.hourglass_empty_outlined, 'Weeks:', '$weeks Weeks'),
+                    const SizedBox(height: 10),
+                    _buildMetaRow(Icons.timer_outlined, 'Lessons:', '$lessons Lessons'),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Preview Section Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Preview Cover & Layout',
+                    style: TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textDark,
+                    ),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => _navigateToGenerate(context),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      visualDensity: VisualDensity.compact,
+                      side: const BorderSide(color: AppTheme.borderSubtle),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text(
+                      'Customize',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.primaryGreen),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              // Document Preview Paper Card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.borderSubtle),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'SCHEMES OF WORK',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subject.name.toUpperCase(),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${grade.name.toUpperCase()}  ${termName.toUpperCase()}',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textMuted),
+                    ),
+                    const SizedBox(height: 14),
+
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLine('School:'),
+                          _buildLine('TSC Number:'),
+                          _buildLine('HOD Name:'),
+                          _buildLine('HOD Signature:'),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          const Icon(Icons.shield_outlined, color: AppTheme.primaryGreen, size: 28),
+                          const SizedBox(height: 2),
+                          Text(
+                            'REPUBLIC OF KENYA\nMINISTRY OF EDUCATION',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: AppTheme.textDark.withValues(alpha: 0.7)),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppTheme.borderSubtle),
+                      ),
+                      child: Table(
+                        border: TableBorder.all(color: AppTheme.borderSubtle, width: 0.5),
+                        columnWidths: const {
+                          0: FixedColumnWidth(28),
+                          1: FixedColumnWidth(32),
+                          2: FlexColumnWidth(1.2),
+                          3: FlexColumnWidth(1.2),
+                          4: FlexColumnWidth(2.2),
+                        },
+                        children: [
+                          TableRow(
+                            decoration: const BoxDecoration(color: Color(0xFFF3F4F6)),
+                            children: [
+                              _buildMiniHeader('WEEK'),
+                              _buildMiniHeader('LESSON'),
+                              _buildMiniHeader('STRAND'),
+                              _buildMiniHeader('SUB-STRAND'),
+                              _buildMiniHeader('LEARNING OUTCOMES'),
+                            ],
+                          ),
+                          TableRow(
+                            children: [
+                              _buildMiniCell('1'),
+                              _buildMiniCell('1'),
+                              _buildMiniCell('Strand 1'),
+                              _buildMiniCell('Sub-Strand 1'),
+                              _buildMiniCell('Specific outcomes according to KICD curriculum design...'),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-        child: SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: ElevatedButton.icon(
-            onPressed: () => _navigateToGenerate(context),
-            icon: const Icon(Icons.auto_awesome, size: 18),
-            label: const Text('Generate My Scheme'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryGreen,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+
+        // Sticky Bottom Button
+        bottomSheet: Container(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(top: BorderSide(color: AppTheme.borderSubtle)),
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              onPressed: () => _navigateToGenerate(context),
+              icon: const Icon(Icons.auto_awesome, size: 18),
+              label: const Text('Generate This Scheme'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryGreen,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
             ),
           ),
         ),

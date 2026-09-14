@@ -1,3 +1,4 @@
+import '../core/config/app_config.dart';
 import '../models/grade.dart';
 import '../models/subject.dart';
 import '../models/strand.dart';
@@ -22,32 +23,171 @@ class SeedData {
   ];
 
   static List<Subject> get defaultSubjects => [
-    // Grade 3 subjects
+    // Pre-Primary 1 (PP1)
+    Subject(id: 'subj-pp1-lang', gradeId: 'grade-pp1', name: 'Language Activities', code: 'LANG', orderIndex: 1),
+    Subject(id: 'subj-pp1-math', gradeId: 'grade-pp1', name: 'Mathematical Activities', code: 'MATH', orderIndex: 2),
+    Subject(id: 'subj-pp1-env', gradeId: 'grade-pp1', name: 'Environmental Activities', code: 'ENV', orderIndex: 3),
+    Subject(id: 'subj-pp1-psy', gradeId: 'grade-pp1', name: 'Psychomotor & Creative Activities', code: 'PSY', orderIndex: 4),
+    Subject(id: 'subj-pp1-re', gradeId: 'grade-pp1', name: 'Religious Education Activities', code: 'RE', orderIndex: 5),
+
+    // Pre-Primary 2 (PP2)
+    Subject(id: 'subj-pp2-lang', gradeId: 'grade-pp2', name: 'Language Activities', code: 'LANG', orderIndex: 1),
+    Subject(id: 'subj-pp2-math', gradeId: 'grade-pp2', name: 'Mathematical Activities', code: 'MATH', orderIndex: 2),
+    Subject(id: 'subj-pp2-env', gradeId: 'grade-pp2', name: 'Environmental Activities', code: 'ENV', orderIndex: 3),
+    Subject(id: 'subj-pp2-psy', gradeId: 'grade-pp2', name: 'Creative Activities', code: 'PSY', orderIndex: 4),
+    Subject(id: 'subj-pp2-re', gradeId: 'grade-pp2', name: 'Religious Education Activities', code: 'RE', orderIndex: 5),
+
+    // Grade 1 Lower Primary
+    Subject(id: 'subj-g1-math', gradeId: 'grade-1', name: 'Mathematics', code: 'MATH', orderIndex: 1),
+    Subject(id: 'subj-g1-eng', gradeId: 'grade-1', name: 'English', code: 'ENG', orderIndex: 2),
+    Subject(id: 'subj-g1-kisw', gradeId: 'grade-1', name: 'Kiswahili', code: 'KISW', orderIndex: 3),
+    Subject(id: 'subj-g1-env', gradeId: 'grade-1', name: 'Environmental Activities', code: 'ENV', orderIndex: 4),
+    Subject(id: 'subj-g1-cre', gradeId: 'grade-1', name: 'Religious Education', code: 'RE', orderIndex: 5),
+    Subject(id: 'subj-g1-creat', gradeId: 'grade-1', name: 'Creative Activities', code: 'CREAT', orderIndex: 6),
+
+    // Grade 2 Lower Primary
+    Subject(id: 'subj-g2-math', gradeId: 'grade-2', name: 'Mathematics Activities', code: 'MATH', orderIndex: 1),
+    Subject(id: 'subj-g2-eng', gradeId: 'grade-2', name: 'English Language Activities', code: 'ENG', orderIndex: 2),
+    Subject(id: 'subj-g2-kisw', gradeId: 'grade-2', name: 'Kiswahili Language Activities', code: 'KISW', orderIndex: 3),
+    Subject(id: 'subj-g2-env', gradeId: 'grade-2', name: 'Environmental Activities', code: 'ENV', orderIndex: 4),
+    Subject(id: 'subj-g2-cre', gradeId: 'grade-2', name: 'Religious Education Activities', code: 'RE', orderIndex: 5),
+    Subject(id: 'subj-g2-creat', gradeId: 'grade-2', name: 'Creative Activities', code: 'CREAT', orderIndex: 6),
+
+    // Grade 3 Lower Primary
     Subject(id: 'subj-g3-math', gradeId: 'grade-3', name: 'Mathematics Activities', code: 'MATH', orderIndex: 1),
     Subject(id: 'subj-g3-eng', gradeId: 'grade-3', name: 'English Language Activities', code: 'ENG', orderIndex: 2),
     Subject(id: 'subj-g3-kisw', gradeId: 'grade-3', name: 'Kiswahili Shughuli za Lugha', code: 'KISW', orderIndex: 3),
     Subject(id: 'subj-g3-env', gradeId: 'grade-3', name: 'Environmental Activities', code: 'ENV', orderIndex: 4),
     Subject(id: 'subj-g3-cre', gradeId: 'grade-3', name: 'Christian Religious Education (CRE)', code: 'CRE', orderIndex: 5),
+    Subject(id: 'subj-g3-creat', gradeId: 'grade-3', name: 'Creative Activities', code: 'CREAT', orderIndex: 6),
 
-    // Grade 4-6 subjects
+    // Grade 4 Upper Primary
     Subject(id: 'subj-g4-math', gradeId: 'grade-4', name: 'Mathematics', code: 'MATH', orderIndex: 1),
-    Subject(id: 'subj-g4-sci', gradeId: 'grade-4', name: 'Science and Technology', code: 'SCI', orderIndex: 2),
-    Subject(id: 'subj-g4-agri', gradeId: 'grade-4', name: 'Agriculture and Nutrition', code: 'AGRI', orderIndex: 3),
-    Subject(id: 'subj-g4-eng', gradeId: 'grade-4', name: 'English', code: 'ENG', orderIndex: 4),
-    Subject(id: 'subj-g4-kisw', gradeId: 'grade-4', name: 'Kiswahili', code: 'KISW', orderIndex: 5),
+    Subject(id: 'subj-g4-eng', gradeId: 'grade-4', name: 'English', code: 'ENG', orderIndex: 2),
+    Subject(id: 'subj-g4-kisw', gradeId: 'grade-4', name: 'Kiswahili', code: 'KISW', orderIndex: 3),
+    Subject(id: 'subj-g4-sci', gradeId: 'grade-4', name: 'Science and Technology', code: 'SCI', orderIndex: 4),
+    Subject(id: 'subj-g4-agri', gradeId: 'grade-4', name: 'Agriculture and Nutrition', code: 'AGRI', orderIndex: 5),
     Subject(id: 'subj-g4-soc', gradeId: 'grade-4', name: 'Social Studies', code: 'SOC', orderIndex: 6),
     Subject(id: 'subj-g4-art', gradeId: 'grade-4', name: 'Creative Arts', code: 'ART', orderIndex: 7),
+    Subject(id: 'subj-g4-cre', gradeId: 'grade-4', name: 'Religious Education', code: 'RE', orderIndex: 8),
 
-    // Grade 7 Junior School subjects
+    // Grade 5 Upper Primary
+    Subject(id: 'subj-g5-math', gradeId: 'grade-5', name: 'Mathematics', code: 'MATH', orderIndex: 1),
+    Subject(id: 'subj-g5-eng', gradeId: 'grade-5', name: 'English', code: 'ENG', orderIndex: 2),
+    Subject(id: 'subj-g5-kisw', gradeId: 'grade-5', name: 'Kiswahili', code: 'KISW', orderIndex: 3),
+    Subject(id: 'subj-g5-sci', gradeId: 'grade-5', name: 'Science and Technology', code: 'SCI', orderIndex: 4),
+    Subject(id: 'subj-g5-agri', gradeId: 'grade-5', name: 'Agriculture and Nutrition', code: 'AGRI', orderIndex: 5),
+    Subject(id: 'subj-g5-soc', gradeId: 'grade-5', name: 'Social Studies', code: 'SOC', orderIndex: 6),
+    Subject(id: 'subj-g5-art', gradeId: 'grade-5', name: 'Creative Arts', code: 'ART', orderIndex: 7),
+    Subject(id: 'subj-g5-cre', gradeId: 'grade-5', name: 'Religious Education', code: 'RE', orderIndex: 8),
+
+    // Grade 6 Upper Primary
+    Subject(id: 'subj-g6-math', gradeId: 'grade-6', name: 'Mathematics', code: 'MATH', orderIndex: 1),
+    Subject(id: 'subj-g6-eng', gradeId: 'grade-6', name: 'English', code: 'ENG', orderIndex: 2),
+    Subject(id: 'subj-g6-kisw', gradeId: 'grade-6', name: 'Kiswahili', code: 'KISW', orderIndex: 3),
+    Subject(id: 'subj-g6-sci', gradeId: 'grade-6', name: 'Science and Technology', code: 'SCI', orderIndex: 4),
+    Subject(id: 'subj-g6-agri', gradeId: 'grade-6', name: 'Agriculture and Nutrition', code: 'AGRI', orderIndex: 5),
+    Subject(id: 'subj-g6-soc', gradeId: 'grade-6', name: 'Social Studies', code: 'SOC', orderIndex: 6),
+    Subject(id: 'subj-g6-art', gradeId: 'grade-6', name: 'Creative Arts', code: 'ART', orderIndex: 7),
+    Subject(id: 'subj-g6-cre', gradeId: 'grade-6', name: 'Religious Education', code: 'RE', orderIndex: 8),
+
+    // Grade 7 Junior School
     Subject(id: 'subj-g7-math', gradeId: 'grade-7', name: 'Mathematics', code: 'MATH', orderIndex: 1),
-    Subject(id: 'subj-g7-intsci', gradeId: 'grade-7', name: 'Integrated Science', code: 'INTSCI', orderIndex: 2),
-    Subject(id: 'subj-g7-agri', gradeId: 'grade-7', name: 'Agriculture', code: 'AGRI', orderIndex: 3),
-    Subject(id: 'subj-g7-eng', gradeId: 'grade-7', name: 'English', code: 'ENG', orderIndex: 4),
-    Subject(id: 'subj-g7-kisw', gradeId: 'grade-7', name: 'Kiswahili', code: 'KISW', orderIndex: 5),
+    Subject(id: 'subj-g7-eng', gradeId: 'grade-7', name: 'English', code: 'ENG', orderIndex: 2),
+    Subject(id: 'subj-g7-kisw', gradeId: 'grade-7', name: 'Kiswahili', code: 'KISW', orderIndex: 3),
+    Subject(id: 'subj-g7-intsci', gradeId: 'grade-7', name: 'Integrated Science', code: 'INTSCI', orderIndex: 4),
+    Subject(id: 'subj-g7-agri', gradeId: 'grade-7', name: 'Agriculture', code: 'AGRI', orderIndex: 5),
     Subject(id: 'subj-g7-soc', gradeId: 'grade-7', name: 'Social Studies', code: 'SOC', orderIndex: 6),
     Subject(id: 'subj-g7-crearts', gradeId: 'grade-7', name: 'Creative Arts & Sports', code: 'CREARTS', orderIndex: 7),
     Subject(id: 'subj-g7-pretech', gradeId: 'grade-7', name: 'Pre-Technical Studies', code: 'PRETECH', orderIndex: 8),
+    Subject(id: 'subj-g7-cre', gradeId: 'grade-7', name: 'Religious Education', code: 'RE', orderIndex: 9),
+
+    // Grade 8 Junior School
+    Subject(id: 'subj-g8-math', gradeId: 'grade-8', name: 'Mathematics', code: 'MATH', orderIndex: 1),
+    Subject(id: 'subj-g8-eng', gradeId: 'grade-8', name: 'English', code: 'ENG', orderIndex: 2),
+    Subject(id: 'subj-g8-kisw', gradeId: 'grade-8', name: 'Kiswahili', code: 'KISW', orderIndex: 3),
+    Subject(id: 'subj-g8-intsci', gradeId: 'grade-8', name: 'Integrated Science', code: 'INTSCI', orderIndex: 4),
+    Subject(id: 'subj-g8-agri', gradeId: 'grade-8', name: 'Agriculture', code: 'AGRI', orderIndex: 5),
+    Subject(id: 'subj-g8-soc', gradeId: 'grade-8', name: 'Social Studies', code: 'SOC', orderIndex: 6),
+    Subject(id: 'subj-g8-crearts', gradeId: 'grade-8', name: 'Creative Arts & Sports', code: 'CREARTS', orderIndex: 7),
+    Subject(id: 'subj-g8-pretech', gradeId: 'grade-8', name: 'Pre-Technical Studies', code: 'PRETECH', orderIndex: 8),
+    Subject(id: 'subj-g8-cre', gradeId: 'grade-8', name: 'Religious Education', code: 'RE', orderIndex: 9),
+
+    // Grade 9 Junior School
+    Subject(id: 'subj-g9-math', gradeId: 'grade-9', name: 'Mathematics', code: 'MATH', orderIndex: 1),
+    Subject(id: 'subj-g9-eng', gradeId: 'grade-9', name: 'English', code: 'ENG', orderIndex: 2),
+    Subject(id: 'subj-g9-kisw', gradeId: 'grade-9', name: 'Kiswahili', code: 'KISW', orderIndex: 3),
+    Subject(id: 'subj-g9-intsci', gradeId: 'grade-9', name: 'Integrated Science', code: 'INTSCI', orderIndex: 4),
+    Subject(id: 'subj-g9-agri', gradeId: 'grade-9', name: 'Agriculture', code: 'AGRI', orderIndex: 5),
+    Subject(id: 'subj-g9-soc', gradeId: 'grade-9', name: 'Social Studies', code: 'SOC', orderIndex: 6),
+    Subject(id: 'subj-g9-crearts', gradeId: 'grade-9', name: 'Creative Arts & Sports', code: 'CREARTS', orderIndex: 7),
+    Subject(id: 'subj-g9-pretech', gradeId: 'grade-9', name: 'Pre-Technical Studies', code: 'PRETECH', orderIndex: 8),
+    Subject(id: 'subj-g9-cre', gradeId: 'grade-9', name: 'Religious Education', code: 'RE', orderIndex: 9),
   ];
+
+  /// Dynamically return accurate CBC learning areas for any grade (by ID or level)
+  static List<Subject> getSubjectsForGrade({
+    required String gradeId,
+    Grade? grade,
+  }) {
+    // 1. Exact gradeId match from defaultSubjects
+    final direct = defaultSubjects.where((s) => s.gradeId == gradeId).toList();
+    if (direct.isNotEmpty) return direct;
+
+    // 2. Resolve level from grade object or name
+    final level = grade?.displayLevel ?? Grade.inferLevelFromName(grade?.name ?? gradeId);
+    final name = (grade?.name ?? gradeId).toLowerCase();
+
+    // Pre-Primary (PP1, PP2)
+    if (level == 'Pre-Primary' || name.contains('pp') || name.contains('pre')) {
+      return [
+        Subject(id: 'subj-$gradeId-lang', gradeId: gradeId, name: 'Language Activities', code: 'LANG', orderIndex: 1),
+        Subject(id: 'subj-$gradeId-math', gradeId: gradeId, name: 'Mathematical Activities', code: 'MATH', orderIndex: 2),
+        Subject(id: 'subj-$gradeId-env', gradeId: gradeId, name: 'Environmental Activities', code: 'ENV', orderIndex: 3),
+        Subject(id: 'subj-$gradeId-psy', gradeId: gradeId, name: 'Psychomotor & Creative Activities', code: 'PSY', orderIndex: 4),
+        Subject(id: 'subj-$gradeId-re', gradeId: gradeId, name: 'Religious Education Activities', code: 'RE', orderIndex: 5),
+      ];
+    }
+
+    // Lower Primary (Grade 1, 2, 3)
+    if (level == 'Lower Primary' || name.contains('grade 1') || name.contains('grade 2') || name.contains('grade 3')) {
+      return [
+        Subject(id: 'subj-$gradeId-math', gradeId: gradeId, name: 'Mathematics Activities', code: 'MATH', orderIndex: 1),
+        Subject(id: 'subj-$gradeId-eng', gradeId: gradeId, name: 'English Language Activities', code: 'ENG', orderIndex: 2),
+        Subject(id: 'subj-$gradeId-kisw', gradeId: gradeId, name: 'Kiswahili Language Activities', code: 'KISW', orderIndex: 3),
+        Subject(id: 'subj-$gradeId-env', gradeId: gradeId, name: 'Environmental Activities', code: 'ENV', orderIndex: 4),
+        Subject(id: 'subj-$gradeId-cre', gradeId: gradeId, name: 'Religious Education Activities', code: 'RE', orderIndex: 5),
+        Subject(id: 'subj-$gradeId-creat', gradeId: gradeId, name: 'Creative Activities', code: 'CREAT', orderIndex: 6),
+      ];
+    }
+
+    // Upper Primary (Grade 4, 5, 6)
+    if (level == 'Upper Primary' || name.contains('grade 4') || name.contains('grade 5') || name.contains('grade 6')) {
+      return [
+        Subject(id: 'subj-$gradeId-math', gradeId: gradeId, name: 'Mathematics', code: 'MATH', orderIndex: 1),
+        Subject(id: 'subj-$gradeId-eng', gradeId: gradeId, name: 'English', code: 'ENG', orderIndex: 2),
+        Subject(id: 'subj-$gradeId-kisw', gradeId: gradeId, name: 'Kiswahili', code: 'KISW', orderIndex: 3),
+        Subject(id: 'subj-$gradeId-sci', gradeId: gradeId, name: 'Science and Technology', code: 'SCI', orderIndex: 4),
+        Subject(id: 'subj-$gradeId-agri', gradeId: gradeId, name: 'Agriculture and Nutrition', code: 'AGRI', orderIndex: 5),
+        Subject(id: 'subj-$gradeId-soc', gradeId: gradeId, name: 'Social Studies', code: 'SOC', orderIndex: 6),
+        Subject(id: 'subj-$gradeId-art', gradeId: gradeId, name: 'Creative Arts', code: 'ART', orderIndex: 7),
+        Subject(id: 'subj-$gradeId-cre', gradeId: gradeId, name: 'Religious Education', code: 'RE', orderIndex: 8),
+      ];
+    }
+
+    // Junior School (Grade 7, 8, 9)
+    return [
+      Subject(id: 'subj-$gradeId-math', gradeId: gradeId, name: 'Mathematics', code: 'MATH', orderIndex: 1),
+      Subject(id: 'subj-$gradeId-eng', gradeId: gradeId, name: 'English', code: 'ENG', orderIndex: 2),
+      Subject(id: 'subj-$gradeId-kisw', gradeId: gradeId, name: 'Kiswahili', code: 'KISW', orderIndex: 3),
+      Subject(id: 'subj-$gradeId-intsci', gradeId: gradeId, name: 'Integrated Science', code: 'INTSCI', orderIndex: 4),
+      Subject(id: 'subj-$gradeId-agri', gradeId: gradeId, name: 'Agriculture', code: 'AGRI', orderIndex: 5),
+      Subject(id: 'subj-$gradeId-soc', gradeId: gradeId, name: 'Social Studies', code: 'SOC', orderIndex: 6),
+      Subject(id: 'subj-$gradeId-crearts', gradeId: gradeId, name: 'Creative Arts & Sports', code: 'CREARTS', orderIndex: 7),
+      Subject(id: 'subj-$gradeId-pretech', gradeId: gradeId, name: 'Pre-Technical Studies', code: 'PRETECH', orderIndex: 8),
+      Subject(id: 'subj-$gradeId-cre', gradeId: gradeId, name: 'Religious Education', code: 'RE', orderIndex: 9),
+    ];
+  }
 
   static List<ReferenceBook> get defaultReferenceBooks => [
     ReferenceBook(
@@ -245,7 +385,7 @@ class SeedData {
     adsEnabled: false,
     pricePerScheme: 100.0,
     currency: 'KES',
-    supportPhone: '+254700000000',
-    supportEmail: 'ruttohkip4@gmail.com',
+    supportPhone: '',
+    supportEmail: AppConfig.supportEmail,
   );
 }

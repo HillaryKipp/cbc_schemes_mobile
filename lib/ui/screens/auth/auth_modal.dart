@@ -197,7 +197,7 @@ class _AuthModalState extends State<AuthModal> {
                           color: !_isSignUp ? Colors.white : Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
                           boxShadow: !_isSignUp
-                              ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 1))]
+                              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 1))]
                               : null,
                         ),
                         alignment: Alignment.center,
@@ -221,7 +221,7 @@ class _AuthModalState extends State<AuthModal> {
                           color: _isSignUp ? Colors.white : Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
                           boxShadow: _isSignUp
-                              ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 1))]
+                              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 1))]
                               : null,
                         ),
                         alignment: Alignment.center,
@@ -259,7 +259,7 @@ class _AuthModalState extends State<AuthModal> {
                       TextFormField(
                         controller: _fullNameController,
                         decoration: const InputDecoration(
-                          hintText: 'e.g. Tr. Jane Wanjiku',
+                          hintText: 'e.g. Tr. Jane Doe',
                           prefixIcon: Icon(Icons.person_outline, size: 20),
                         ),
                         validator: (val) {
@@ -277,7 +277,7 @@ class _AuthModalState extends State<AuthModal> {
                       TextFormField(
                         controller: _schoolNameController,
                         decoration: const InputDecoration(
-                          hintText: 'e.g. Nairobi Primary School',
+                          hintText: 'e.g. Nairobi Primary School / Academy',
                           prefixIcon: Icon(Icons.account_balance_outlined, size: 20),
                         ),
                       ),
@@ -289,7 +289,7 @@ class _AuthModalState extends State<AuthModal> {
                       TextFormField(
                         controller: _tscController,
                         decoration: const InputDecoration(
-                          hintText: 'e.g. 123456',
+                          hintText: 'e.g. TSC123456',
                           prefixIcon: Icon(Icons.badge_outlined, size: 20),
                         ),
                       ),
@@ -303,7 +303,7 @@ class _AuthModalState extends State<AuthModal> {
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       decoration: const InputDecoration(
-                        hintText: 'teacher@school.ac.ke',
+                        hintText: 'teacher@example.com',
                         prefixIcon: Icon(Icons.email_outlined, size: 20),
                       ),
                       validator: (val) {

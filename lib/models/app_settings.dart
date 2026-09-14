@@ -1,3 +1,5 @@
+import '../core/config/app_config.dart';
+
 class AppSettings {
   final bool paymentsEnabled;
   final bool adsEnabled;
@@ -13,8 +15,8 @@ class AppSettings {
     this.pricePerScheme = 100.0,
     this.currency = 'KES',
     this.mpesaPaybill,
-    this.supportPhone = '+254700000000',
-    this.supportEmail = 'ruttohkip4@gmail.com',
+    this.supportPhone,
+    this.supportEmail = AppConfig.supportEmail,
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -25,7 +27,7 @@ class AppSettings {
       currency: json['currency'] as String? ?? 'KES',
       mpesaPaybill: json['mpesa_paybill'] as String?,
       supportPhone: json['support_phone'] as String?,
-      supportEmail: json['support_email'] as String? ?? 'ruttohkip4@gmail.com',
+      supportEmail: json['support_email'] as String? ?? AppConfig.supportEmail,
     );
   }
 

@@ -196,7 +196,7 @@ class DashboardScreen extends StatelessWidget {
                   StatBadge(
                     label: '${scheme.rows.length} Lessons',
                     icon: Icons.list_alt,
-                    color: AppTheme.primaryEmerald.withOpacity(0.08),
+                    color: AppTheme.primaryEmerald.withValues(alpha: 0.08),
                   ),
                   const SizedBox(width: 8),
                   if (scheme.referenceBookTitle != null)
@@ -356,7 +356,7 @@ class DashboardScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppTheme.primaryEmerald.withOpacity(0.08),
+              color: AppTheme.primaryEmerald.withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
             child: const Icon(

@@ -62,7 +62,7 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
 
   // Generation Steps Progress Checklist
   final List<String> _progressTasks = [
-    'Loading curriculum content',
+    'Loading KICD curriculum content',
     'Selecting strands & sub-strands',
     'Adding learning outcomes',
     'Adding learning experiences',
@@ -93,9 +93,12 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
     _teacherController.text = cached['teacher_name'] ?? '';
 
     final grades = await _curriculum.getGrades();
-    _grade = widget.initialGrade ?? grades.firstWhere((g) => g.id == 'grade-6', orElse: () => grades.first);
+    _grade = widget.initialGrade ?? grades.firstWhere(
+      (g) => g.id == 'grade-6' || g.name.toLowerCase() == 'grade 6',
+      orElse: () => grades.first,
+    );
 
-    final subjects = await _curriculum.getSubjects(_grade.id);
+    final subjects = await _curriculum.getSubjects(_grade.id, grade: _grade);
     _subject = widget.initialSubject ?? subjects.firstWhere((s) => s.name.toLowerCase().contains('math'), orElse: () => subjects.first);
 
     final books = await _curriculum.getReferenceBooks(_subject.id);
@@ -110,16 +113,15 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
       _completedTaskCount = 0;
     });
 
-    // Animate progress tasks sequentially
-    Timer.periodic(const Duration(milliseconds: 350), (timer) {
+    final timer = Timer.periodic(const Duration(milliseconds: 320), (t) {
       if (!mounted) {
-        timer.cancel();
+        t.cancel();
         return;
       }
       if (_completedTaskCount < _progressTasks.length) {
         setState(() => _completedTaskCount++);
       } else {
-        timer.cancel();
+        t.cancel();
       }
     });
 
@@ -138,8 +140,8 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
         hodName: _hodController.text.trim(),
       );
 
-      // Wait a moment for final animation task
-      await Future.delayed(const Duration(milliseconds: 3000));
+      await Future.delayed(const Duration(milliseconds: 2600));
+      timer.cancel();
 
       if (!mounted) return;
 
@@ -153,6 +155,7 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
         ),
       );
     } catch (e) {
+      timer.cancel();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error generating scheme: $e')),
@@ -178,41 +181,46 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: AppTheme.surfaceBg,
-      appBar: AppBar(
-        leading: _currentStep > 1 && _currentStep < 3
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new, size: 18),
-                onPressed: () => setState(() => _currentStep--),
-              )
-            : IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new, size: 18),
-                onPressed: () => Navigator.pop(context),
-              ),
-        title: const Text('Generate Scheme', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          // Stepper Progress Header
-          StepProgressBar(currentStep: _currentStep),
-          const Divider(height: 1),
-
-          // Step Body
-          Expanded(
-            child: _currentStep == 1
-                ? _buildStep1SchoolDetails()
-                : _currentStep == 2
-                    ? _buildStep2TermCalendar()
-                    : _buildStep3Generating(),
+    return PopScope(
+      canPop: _currentStep == 1,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _currentStep > 1 && _currentStep < 3) {
+          setState(() => _currentStep--);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppTheme.surfaceBg,
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+            onPressed: () {
+              if (_currentStep > 1 && _currentStep < 3) {
+                setState(() => _currentStep--);
+              } else {
+                Navigator.maybePop(context);
+              }
+            },
           ),
-        ],
+          title: Text('${_grade.name} ${_subject.name}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          centerTitle: true,
+        ),
+        body: Column(
+          children: [
+            StepProgressBar(currentStep: _currentStep),
+            const Divider(height: 1),
+            Expanded(
+              child: _currentStep == 1
+                  ? _buildStep1SchoolDetails()
+                  : _currentStep == 2
+                      ? _buildStep2TermCalendar()
+                      : _buildStep3Generating(),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // STEP 1: School Details (Screen 4 in design)
   Widget _buildStep1SchoolDetails() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -220,61 +228,77 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Step 1: School Details',
+            'Step 1: School & Teacher Details',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textDark),
           ),
           const SizedBox(height: 4),
           const Text(
-            'Enter your school information',
+            'Saved automatically to pre-fill future schemes.',
             style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
           ),
           const SizedBox(height: 20),
 
-          // School Name Field
           const Text('School Name', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: AppTheme.textDark)),
           const SizedBox(height: 6),
           TextFormField(
             controller: _schoolController,
             decoration: const InputDecoration(
               hintText: 'Enter school name',
+              prefixIcon: Icon(Icons.account_balance_outlined, size: 20),
             ),
           ),
           const SizedBox(height: 16),
 
-          // TSC Number Field
-          const Text('TSC Number', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: AppTheme.textDark)),
-          const SizedBox(height: 6),
-          TextFormField(
-            controller: _tscController,
-            decoration: const InputDecoration(
-              hintText: 'Enter TSC number',
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // HOD Name Field
-          const Text('HOD Name', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: AppTheme.textDark)),
-          const SizedBox(height: 6),
-          TextFormField(
-            controller: _hodController,
-            decoration: const InputDecoration(
-              hintText: 'Enter HOD name',
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Teacher Name Field
           const Text('Teacher Name (Optional)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: AppTheme.textDark)),
           const SizedBox(height: 6),
           TextFormField(
             controller: _teacherController,
             decoration: const InputDecoration(
-              hintText: 'Enter your name',
+              hintText: 'Enter teacher name',
+              prefixIcon: Icon(Icons.person_outline, size: 20),
             ),
+          ),
+          const SizedBox(height: 16),
+
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('TSC Number', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: AppTheme.textDark)),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _tscController,
+                      decoration: const InputDecoration(
+                        hintText: 'TSC / ID',
+                        prefixIcon: Icon(Icons.badge_outlined, size: 19),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('HOD Name', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: AppTheme.textDark)),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _hodController,
+                      decoration: const InputDecoration(
+                        hintText: 'HOD Name',
+                        prefixIcon: Icon(Icons.supervisor_account_outlined, size: 19),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 32),
 
-          // Continue Button
           SizedBox(
             width: double.infinity,
             height: 48,
@@ -295,7 +319,7 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('Continue', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                  Text('Continue to Calendar', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                   SizedBox(width: 8),
                   Icon(Icons.arrow_forward_rounded, size: 18),
                 ],
@@ -307,7 +331,6 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
     );
   }
 
-  // STEP 2: Term Calendar (Screen 5 in design)
   Widget _buildStep2TermCalendar() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -315,17 +338,16 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Step 2: Term Calendar',
+            'Step 2: Term Calendar & Lessons',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textDark),
           ),
           const SizedBox(height: 4),
           const Text(
-            'Review and adjust the calendar',
+            'Review lessons per week and duration',
             style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
           ),
           const SizedBox(height: 20),
 
-          // Term 3 Card
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -346,15 +368,10 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                const Text(
-                  '24 August – 23 October 2026',
-                  style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
-                ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 8),
                 Text(
-                  '$_weeks Weeks',
-                  style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                  'Total ${_weeks * _lessonsPerWeek} Lessons across $_weeks Weeks',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.primaryGreen),
                 ),
               ],
             ),
@@ -362,7 +379,6 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
 
           const SizedBox(height: 20),
 
-          // Lessons per week counter
           const Text(
             'Lessons per week',
             style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: AppTheme.textDark),
@@ -404,7 +420,6 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
 
           const SizedBox(height: 20),
 
-          // Teaching Days
           const Text(
             'Teaching Days',
             style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: AppTheme.textDark),
@@ -453,58 +468,18 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
             }).toList(),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 32),
 
-          // Adjust Calendar Accordion Card
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.borderSubtle),
-            ),
-            child: const Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Adjust Calendar',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textDark),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Modify term dates, breaks and lessons per week if needed.',
-                        style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.chevron_right, color: AppTheme.textMuted),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 28),
-
-          // Continue to Generate Button
           SizedBox(
             width: double.infinity,
             height: 48,
-            child: ElevatedButton(
+            child: ElevatedButton.icon(
               onPressed: _startGeneration,
+              icon: const Icon(Icons.auto_awesome, size: 18),
+              label: const Text('Generate Scheme', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryGreen,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Continue to Generate', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-                  SizedBox(width: 8),
-                  Icon(Icons.arrow_forward_rounded, size: 18),
-                ],
               ),
             ),
           ),
@@ -513,7 +488,6 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
     );
   }
 
-  // STEP 3: Generating Screen with Checklist Animation (Screen 6 in design)
   Widget _buildStep3Generating() {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -523,7 +497,7 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
           const Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'Step 3: Generating',
+              'Step 3: Generating Scheme',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textDark),
             ),
           ),
@@ -531,55 +505,41 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
           const Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'Please wait while we build your scheme',
+              'Please wait while we build your KICD-compliant scheme',
               style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
             ),
           ),
           const SizedBox(height: 28),
 
-          // Glowing Green Document Icon Container
           Container(
-            width: 100,
-            height: 100,
+            width: 90,
+            height: 90,
             decoration: BoxDecoration(
               color: AppTheme.primaryGreenLight,
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.primaryGreen.withOpacity(0.15),
-                  blurRadius: 24,
-                  spreadRadius: 6,
+                  color: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                  blurRadius: 20,
+                  spreadRadius: 4,
                 ),
               ],
             ),
             alignment: Alignment.center,
-            child: Container(
-              width: 58,
-              height: 58,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryGreen,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.article_rounded,
-                color: Colors.white,
-                size: 34,
-              ),
+            child: const Icon(
+              Icons.article_rounded,
+              color: AppTheme.primaryGreen,
+              size: 40,
             ),
           ),
 
           const SizedBox(height: 20),
           const Text(
             'Generating your scheme...',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textDark,
-            ),
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.textDark),
           ),
           const SizedBox(height: 24),
 
-          // Checklist of Tasks
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -598,7 +558,7 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
                   child: Row(
                     children: [
                       if (isDone)
-                        const Icon(Icons.check, size: 18, color: AppTheme.primaryGreen)
+                        const Icon(Icons.check_circle_rounded, size: 18, color: AppTheme.primaryGreen)
                       else if (isCurrent)
                         const SizedBox(
                           width: 16,
@@ -606,7 +566,7 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryGreen),
                         )
                       else
-                        const Icon(Icons.more_horiz, size: 18, color: Color(0xFF9CA3AF)),
+                        const Icon(Icons.radio_button_unchecked, size: 18, color: Color(0xFF9CA3AF)),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(

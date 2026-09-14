@@ -4,6 +4,7 @@ import 'package:cbc_schemes_mobile/models/grade.dart';
 import 'package:cbc_schemes_mobile/models/subject.dart';
 import 'package:cbc_schemes_mobile/services/guest_storage_service.dart';
 import 'package:cbc_schemes_mobile/services/scheme_generator.dart';
+import 'package:cbc_schemes_mobile/services/curriculum_service.dart';
 import 'package:cbc_schemes_mobile/core/utils/calendar_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -37,10 +38,10 @@ void main() {
       year: 2026,
       weeks: 10,
       lessonsPerWeek: 5,
-      schoolName: 'Nairobi Junior School',
-      teacherName: 'Tr. Hillary',
-      tscNumber: '123456',
-      hodName: 'Tr. Kip',
+      schoolName: 'CBC Model Junior School',
+      teacherName: 'Teacher Jane Doe',
+      tscNumber: 'TSC123456',
+      hodName: 'HOD Science & Math',
     );
 
     expect(scheme.id.startsWith('guest-'), isTrue);
@@ -57,11 +58,53 @@ void main() {
     await tester.pumpWidget(const CbcSchemesApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('CBC SCHEMES'), findsOneWidget);
-    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('CBC SCHEMES OF WORK'), findsOneWidget);
+    expect(find.text('Generator'), findsOneWidget);
     expect(find.text('Schemes'), findsOneWidget);
-    expect(find.text('Generate'), findsOneWidget);
     expect(find.text('Saved'), findsOneWidget);
-    expect(find.text('Menu'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
+  });
+
+  test('Grade level subjects are strictly isolated by curriculum stage', () async {
+    final curriculum = CurriculumService.instance;
+
+    // PP1 Grade (Pre-Primary)
+    final pp1Grade = Grade(id: 'uuid-pp1', name: 'PP1');
+    final pp1Subjects = await curriculum.getSubjects(pp1Grade.id, grade: pp1Grade);
+    final pp1Names = pp1Subjects.map((s) => s.name).toList();
+
+    expect(pp1Names.contains('Language Activities'), isTrue);
+    expect(pp1Names.contains('Mathematical Activities'), isTrue);
+    expect(pp1Names.contains('Integrated Science'), isFalse);
+    expect(pp1Names.contains('Agriculture & Nutrition'), isFalse);
+    expect(pp1Names.contains('Pre-Technical Studies'), isFalse);
+
+    // Grade 2 (Lower Primary)
+    final g2Grade = Grade(id: 'uuid-g2', name: 'Grade 2');
+    final g2Subjects = await curriculum.getSubjects(g2Grade.id, grade: g2Grade);
+    final g2Names = g2Subjects.map((s) => s.name).toList();
+
+    expect(g2Names.contains('Mathematics Activities'), isTrue);
+    expect(g2Names.contains('English Language Activities'), isTrue);
+    expect(g2Names.contains('Integrated Science'), isFalse);
+    expect(g2Names.contains('Agriculture & Nutrition'), isFalse);
+
+    // Grade 4 (Upper Primary)
+    final g4Grade = Grade(id: 'uuid-g4', name: 'Grade 4');
+    final g4Subjects = await curriculum.getSubjects(g4Grade.id, grade: g4Grade);
+    final g4Names = g4Subjects.map((s) => s.name).toList();
+
+    expect(g4Names.contains('Science and Technology'), isTrue);
+    expect(g4Names.contains('Agriculture and Nutrition'), isTrue);
+    expect(g4Names.contains('Integrated Science'), isFalse);
+
+    // Grade 7 (Junior School)
+    final g7Grade = Grade(id: 'uuid-g7', name: 'Grade 7');
+    final g7Subjects = await curriculum.getSubjects(g7Grade.id, grade: g7Grade);
+    final g7Names = g7Subjects.map((s) => s.name).toList();
+
+    expect(g7Names.contains('Integrated Science'), isTrue);
+    expect(g7Names.contains('Pre-Technical Studies'), isTrue);
+    expect(g7Names.contains('Creative Arts & Sports'), isTrue);
   });
 }

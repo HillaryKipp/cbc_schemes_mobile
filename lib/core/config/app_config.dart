@@ -2,17 +2,24 @@
 class AppConfig {
   static const String appName = 'CBC Schemes of Work';
   static const String appVersion = '1.0.0';
-  static const String adminEmail = 'ruttohkip4@gmail.com';
+  static const String adminEmail = String.fromEnvironment(
+    'ADMIN_EMAIL',
+    defaultValue: 'admin@cbcschemes.app',
+  );
+  static const String supportEmail = String.fromEnvironment(
+    'SUPPORT_EMAIL',
+    defaultValue: 'support@cbcschemes.app',
+  );
 
   // Supabase Configuration
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: '',
+    defaultValue: 'https://woaibqmgrqlvcduvmtpc.supabase.co',
   );
 
   static const String supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_PUBLISHABLE_KEY',
-    defaultValue: '',
+    defaultValue: 'sb_publishable_gTNgTe0IjvAF-0tX697z-Q_Un_HXcdm',
   );
 
   // Storage Keys
