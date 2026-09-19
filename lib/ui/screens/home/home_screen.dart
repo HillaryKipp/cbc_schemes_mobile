@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/config/theme.dart';
+import '../../../core/utils/scheme_search_matcher.dart';
 import '../../../models/grade.dart';
 import '../../../models/subject.dart';
 import '../../../models/reference_book.dart';
@@ -10,6 +11,7 @@ import '../../../services/guest_storage_service.dart';
 import '../../../services/scheme_generator.dart';
 import '../../../state/scheme_editor_provider.dart';
 import '../../../state/scheme_list_provider.dart';
+import '../../widgets/whatsapp_support_button.dart';
 import '../editor/scheme_editor_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -32,26 +34,29 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Grade> _grades = [];
   List<Subject> _subjects = [];
   List<ReferenceBook> _referenceBooks = [];
+  List<Map<String, dynamic>> _allSubjectsForSearch = [];
 
   Grade? _selectedGrade;
   Subject? _selectedSubject;
   ReferenceBook? _selectedBook;
-  String _selectedTerm = 'Term 3';
+  String _selectedTerm = 'Term 1';
   int _selectedYear = 2026;
-  int _weeks = 9;
+  int _weeks = 13;
   int _lessonsPerWeek = 5;
+  String _pacingMode = 'progressive'; // 'progressive' or 'comprehensive'
 
   bool _isLoadingSubjects = false;
   bool _isLoadingBooks = false;
-
-  // Teaching Days
-  final Set<String> _selectedDays = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri'};
 
   // School & Teacher Profile Controllers
   final _schoolController = TextEditingController();
   final _tscController = TextEditingController();
   final _hodController = TextEditingController();
   final _teacherController = TextEditingController();
+
+  // Natural Language Search
+  final _searchController = TextEditingController();
+  List<SchemeSearchMatch> _searchMatches = [];
 
   // Progress animation tasks
   final List<String> _progressTasks = [
@@ -72,7 +77,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadInitialData() async {
     setState(() => _isLoading = true);
 
-    // Load cached profile
     final cached = _guestStorage.getTeacherProfile();
     _schoolController.text = cached['school_name'] ?? '';
     _tscController.text = cached['tsc_number'] ?? '';
@@ -82,11 +86,21 @@ class _HomeScreenState extends State<HomeScreen> {
     _grades = await _curriculum.getGrades();
     if (_grades.isNotEmpty) {
       _selectedGrade = _grades.firstWhere(
-        (g) => g.id == 'grade-6' || g.name.toLowerCase() == 'grade 6',
+        (g) => g.id == 'grade-4' || g.name.toLowerCase() == 'grade 4',
         orElse: () => _grades.first,
       );
       await _onGradeChanged(_selectedGrade!);
     }
+
+    // Preload subjects for natural language search
+    final allSubs = <Map<String, dynamic>>[];
+    for (final g in _grades) {
+      final subs = await _curriculum.getSubjects(g.id, grade: g);
+      for (final s in subs) {
+        allSubs.add(s.toJson());
+      }
+    }
+    _allSubjectsForSearch = allSubs;
 
     if (mounted) setState(() => _isLoading = false);
   }
@@ -144,6 +158,19 @@ class _HomeScreenState extends State<HomeScreen> {
         _weeks = 13;
       }
     });
+  }
+
+  void _onSearchChanged(String query) {
+    if (query.trim().isEmpty) {
+      setState(() => _searchMatches = []);
+      return;
+    }
+    final matches = parseSchemeSearch(
+      query,
+      _grades.map((g) => g.toJson()).toList(),
+      _allSubjectsForSearch,
+    );
+    setState(() => _searchMatches = matches);
   }
 
   void _applyQuickPreset({
@@ -212,13 +239,14 @@ class _HomeScreenState extends State<HomeScreen> {
         year: _selectedYear,
         weeks: _weeks,
         lessonsPerWeek: _lessonsPerWeek,
+        pacingMode: _pacingMode,
         schoolName: _schoolController.text.trim(),
         teacherName: _teacherController.text.trim(),
         tscNumber: _tscController.text.trim(),
         hodName: _hodController.text.trim(),
       );
 
-      await Future.delayed(const Duration(milliseconds: 1500));
+      await Future.delayed(const Duration(milliseconds: 1400));
       progressTimer.cancel();
 
       if (!mounted) return;
@@ -246,6 +274,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _searchController.dispose();
     _schoolController.dispose();
     _tscController.dispose();
     _hodController.dispose();
@@ -307,7 +336,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   Text(
-                    'Step-by-Step Scheme Generator',
+                    'Official Lesson Planning & Curriculum Engine',
                     style: TextStyle(
                       fontSize: 9.5,
                       fontWeight: FontWeight.w600,
@@ -321,11 +350,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         body: Column(
           children: [
-            // Original Circle Milestone Stepper Navigation Header
             _buildStepperHeader(),
             const Divider(height: 1),
-
-            // Step Content
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 220),
@@ -334,6 +360,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+        floatingActionButton: _currentStep != 4 ? const WhatsAppSupportButton(mini: true) : null,
       ),
     );
   }
@@ -441,12 +468,139 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // STEP 1: Grade, Subject & Term Selection
+  // STEP 1: Natural Language Search + Term Cards + Workflow + Curriculum
   Widget _buildStep1Curriculum() {
     return ListView(
       key: const ValueKey(1),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       children: [
+        // 1. Natural Language Search Bar
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.borderSubtle),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search schemes (e.g. "grade 4 math term 1", "sst grade 7")',
+                  hintStyle: const TextStyle(fontSize: 12.5, color: AppTheme.textMuted),
+                  prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.primaryGreen, size: 20),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18, color: AppTheme.textMuted),
+                          onPressed: () {
+                            _searchController.clear();
+                            _onSearchChanged('');
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                ),
+                onChanged: _onSearchChanged,
+              ),
+
+              // Search Suggestions
+              if (_searchMatches.isNotEmpty) ...[
+                const Divider(height: 1),
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  constraints: const BoxConstraints(maxHeight: 220),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _searchMatches.length,
+                    itemBuilder: (ctx, i) {
+                      final match = _searchMatches[i];
+                      return ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.auto_stories_outlined, color: AppTheme.primaryGreen, size: 18),
+                        title: Text(
+                          '${match.gradeName} ${match.subjectName}',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                        ),
+                        subtitle: match.term != null ? Text(match.term!, style: const TextStyle(fontSize: 11, color: AppTheme.primaryGreen)) : null,
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 12, color: AppTheme.textMuted),
+                        onTap: () {
+                          _searchController.clear();
+                          _onSearchChanged('');
+                          _applyQuickPreset(
+                            gradeId: match.gradeId,
+                            subjectKeyword: match.subjectName,
+                            term: match.term ?? _selectedTerm,
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 14),
+
+        // 2. Official 2026 Term Shortcut Cards
+        Row(
+          children: [
+            _buildTermDateCard('Term 1', 'Jan 5 – Apr 3', '13 Weeks', 13),
+            const SizedBox(width: 8),
+            _buildTermDateCard('Term 2', 'Apr 27 – Jul 31', '14 Weeks', 14),
+            const SizedBox(width: 8),
+            _buildTermDateCard('Term 3', 'Aug 24 – Oct 23', '9 Weeks', 9),
+          ],
+        ),
+
+        const SizedBox(height: 14),
+
+        // 3. 4-Step Workflow Guide
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0FDF4),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFBBF7D0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.bolt_rounded, size: 16, color: AppTheme.primaryGreen),
+                  SizedBox(width: 6),
+                  Text(
+                    'HOW IT WORKS: 4 EASY STEPS',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.primaryGreen),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _buildWorkflowStep('1. Choose', 'Grade, subject & term'),
+                  _buildWorkflowStep('2. Generate', 'KICD outcomes & items'),
+                  _buildWorkflowStep('3. Edit', 'Rows & reflections'),
+                  _buildWorkflowStep('4. Export', 'DOCX, PDF & WhatsApp'),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 14),
+
+        // 4. Primary Curriculum Selection Card
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -533,7 +687,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 14),
 
-              const Text('4. Year', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.textDark)),
+              const Text('4. Academic Year', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.textDark)),
               const SizedBox(height: 6),
               Row(
                 children: [2025, 2026, 2027].map((yr) {
@@ -578,7 +732,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   key: ValueKey('book-select-${_selectedSubject?.id}-${_selectedBook?.id}'),
                   initialValue: _referenceBooks.contains(_selectedBook) ? _selectedBook : null,
                   isExpanded: true,
-                  hint: Text(_isLoadingBooks ? 'Loading books...' : 'Select Approved Book'),
+                  hint: Text(_isLoadingBooks ? 'Loading books...' : 'All KICD Approved Books'),
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.auto_stories_outlined, color: AppTheme.primaryGreen, size: 19),
                     suffixIcon: _isLoadingBooks
@@ -593,14 +747,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         : null,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                   ),
-                  items: _referenceBooks.map((b) => DropdownMenuItem(
-                    value: b,
-                    child: Text(
-                      b.publisher.isEmpty ? b.title : '${b.title} (${b.publisher})',
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12.5),
+                  items: [
+                    const DropdownMenuItem<ReferenceBook>(
+                      value: null,
+                      child: Text('All Approved Books (General)', style: TextStyle(fontSize: 12.5)),
                     ),
-                  )).toList(),
+                    ..._referenceBooks.map((b) => DropdownMenuItem(
+                      value: b,
+                      child: Text(
+                        b.publisher.isEmpty ? b.title : '${b.title} (${b.publisher})',
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12.5),
+                      ),
+                    )),
+                  ],
                   onChanged: _isLoadingBooks ? null : (val) => setState(() => _selectedBook = val),
                 ),
               ],
@@ -608,26 +768,27 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
 
-        // Quick Preset Buttons
+        // Quick Preset Chips
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              _buildPresetButton('Grade 6 Math', 'grade-6', 'math', 'Term 3'),
+              _buildPresetButton('Grade 4 Math', 'grade-4', 'math', 'Term 1'),
               const SizedBox(width: 8),
-              _buildPresetButton('Grade 7 Science', 'grade-7', 'sci', 'Term 3'),
+              _buildPresetButton('Grade 7 Science', 'grade-7', 'sci', 'Term 1'),
               const SizedBox(width: 8),
-              _buildPresetButton('Grade 5 English', 'grade-5', 'eng', 'Term 3'),
+              _buildPresetButton('Grade 5 English', 'grade-5', 'eng', 'Term 1'),
               const SizedBox(width: 8),
-              _buildPresetButton('Grade 8 Agri', 'grade-8', 'agri', 'Term 3'),
+              _buildPresetButton('Grade 8 Agri', 'grade-8', 'agri', 'Term 1'),
             ],
           ),
         ),
 
         const SizedBox(height: 18),
 
+        // Next Button
         SizedBox(
           width: double.infinity,
           height: 50,
@@ -650,6 +811,70 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTermDateCard(String term, String dates, String duration, int weeks) {
+    final isSelected = _selectedTerm == term;
+    return Expanded(
+      child: InkWell(
+        onTap: () => _onTermChanged(term),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+          decoration: BoxDecoration(
+            color: isSelected ? AppTheme.primaryGreenLight : Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? AppTheme.primaryGreen : AppTheme.borderSubtle,
+              width: isSelected ? 1.5 : 1.0,
+            ),
+          ),
+          child: Column(
+            children: [
+              Text(
+                term,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: isSelected ? AppTheme.primaryGreen : AppTheme.textDark,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                dates,
+                style: const TextStyle(fontSize: 9.5, color: AppTheme.textMuted),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                duration,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? AppTheme.primaryGreen : AppTheme.textDark,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWorkflowStep(String title, String subtitle) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: AppTheme.primaryGreen)),
+            const SizedBox(height: 2),
+            Text(subtitle, style: const TextStyle(fontSize: 9, color: AppTheme.textDark), maxLines: 2, overflow: TextOverflow.ellipsis),
+          ],
+        ),
+      ),
     );
   }
 
@@ -812,29 +1037,23 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 13),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                child: const Text('Back', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                child: const Text('Back'),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               flex: 2,
-              child: ElevatedButton(
+              child: ElevatedButton.icon(
                 onPressed: () {
                   _saveTeacherProfile();
                   setState(() => _currentStep = 3);
                 },
+                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                label: const Text('Next: Timetable & Pacing', style: TextStyle(fontWeight: FontWeight.w700)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryGreen,
                   padding: const EdgeInsets.symmetric(vertical: 13),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('Next: Timetable', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
-                    SizedBox(width: 6),
-                    Icon(Icons.arrow_forward_rounded, size: 17),
-                  ],
                 ),
               ),
             ),
@@ -844,147 +1063,142 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // STEP 3: Calendar & Timetable Settings
+  // STEP 3: Timetable, Lessons & Pacing Mode
   Widget _buildStep3Calendar() {
     return ListView(
       key: const ValueKey(3),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       children: [
+        // Summary Card
         Container(
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppTheme.borderSubtle),
           ),
-          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Scheme Overview Badge
               Row(
                 children: [
-                  const Icon(Icons.event_available_rounded, color: AppTheme.primaryGreen, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '${_selectedGrade?.name} • ${_selectedSubject?.name}',
-                      style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppTheme.textDark),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  const Icon(Icons.calendar_month_outlined, color: AppTheme.primaryGreen, size: 22),
+                  const SizedBox(width: 10),
+                  Text(
+                    '$_selectedTerm – $_selectedYear',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.textDark),
                   ),
                 ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Total ${_weeks * _lessonsPerWeek} Lessons across $_weeks Weeks',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.primaryGreen),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 14),
+
+        // Lessons per week
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppTheme.borderSubtle),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Lessons per Week', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: AppTheme.textDark)),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.remove_circle_outline, color: AppTheme.primaryGreen),
+                    onPressed: () {
+                      if (_lessonsPerWeek > 1) {
+                        setState(() => _lessonsPerWeek--);
+                      }
+                    },
+                  ),
+                  Text(
+                    '$_lessonsPerWeek lessons / week',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add_circle_outline, color: AppTheme.primaryGreen),
+                    onPressed: () {
+                      if (_lessonsPerWeek < 12) {
+                        setState(() => _lessonsPerWeek++);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 14),
+
+        // Pacing & Progression Mode
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppTheme.borderSubtle),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Lesson Pacing & Progression',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: AppTheme.textDark),
               ),
               const SizedBox(height: 4),
-              Text(
-                '$_selectedTerm $_selectedYear  •  Total ${_weeks * _lessonsPerWeek} Lessons across $_weeks Weeks',
-                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppTheme.primaryGreen),
+              const Text(
+                'Choose how outcomes & experiences are distributed across lessons:',
+                style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
               ),
-              const Divider(height: 20),
+              const SizedBox(height: 10),
 
-              // Lessons per week
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Lessons per Week', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppTheme.textDark)),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.remove_circle_outline, size: 22, color: AppTheme.primaryGreen),
-                        onPressed: () {
-                          if (_lessonsPerWeek > 1) setState(() => _lessonsPerWeek--);
-                        },
-                      ),
-                      Text(
-                        '$_lessonsPerWeek',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.textDark),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle_outline, size: 22, color: AppTheme.primaryGreen),
-                        onPressed: () {
-                          if (_lessonsPerWeek < 10) setState(() => _lessonsPerWeek++);
-                        },
-                      ),
-                    ],
-                  ),
-                ],
+              // Option A: Progressive
+              RadioListTile<String>(
+                value: 'progressive',
+                groupValue: _pacingMode,
+                activeColor: AppTheme.primaryGreen,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Progressive (Recommended)', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+                subtitle: const Text(
+                  'Distributes outcomes and questions step-by-step per lesson so teachers do not repeat every outcome in every lesson.',
+                  style: TextStyle(fontSize: 11.5, color: AppTheme.textMuted),
+                ),
+                onChanged: (val) {
+                  if (val != null) setState(() => _pacingMode = val);
+                },
               ),
 
-              const SizedBox(height: 6),
+              const Divider(height: 14),
 
-              // Weeks
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Number of Weeks', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppTheme.textDark)),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.remove_circle_outline, size: 22, color: AppTheme.primaryGreen),
-                        onPressed: () {
-                          if (_weeks > 1) setState(() => _weeks--);
-                        },
-                      ),
-                      Text(
-                        '$_weeks',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.textDark),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle_outline, size: 22, color: AppTheme.primaryGreen),
-                        onPressed: () {
-                          if (_weeks < 16) setState(() => _weeks++);
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              // Teaching Days
-              const Text('Teaching Days', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppTheme.textDark)),
-              const SizedBox(height: 6),
-              Row(
-                children: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day) {
-                  final isSelected = _selectedDays.contains(day);
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2.5),
-                      child: InkWell(
-                        onTap: () {
-                          setState(() {
-                            if (isSelected) {
-                              if (_selectedDays.length > 1) _selectedDays.remove(day);
-                            } else {
-                              _selectedDays.add(day);
-                            }
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 7),
-                          decoration: BoxDecoration(
-                            color: isSelected ? AppTheme.primaryGreenLight : const Color(0xFFF9FAFB),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: isSelected ? AppTheme.primaryGreen : AppTheme.borderSubtle,
-                              width: 1.2,
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            day,
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              color: isSelected ? AppTheme.primaryGreen : AppTheme.textDark,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+              // Option B: Comprehensive
+              RadioListTile<String>(
+                value: 'comprehensive',
+                groupValue: _pacingMode,
+                activeColor: AppTheme.primaryGreen,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Comprehensive', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+                subtitle: const Text(
+                  'Assigns all sub-strand outcomes and experiences to every lesson slot.',
+                  style: TextStyle(fontSize: 11.5, color: AppTheme.textMuted),
+                ),
+                onChanged: (val) {
+                  if (val != null) setState(() => _pacingMode = val);
+                },
               ),
             ],
           ),
@@ -1001,19 +1215,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 13),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                child: const Text('Back', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                child: const Text('Back'),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               flex: 2,
               child: ElevatedButton.icon(
                 onPressed: _startGeneration,
                 icon: const Icon(Icons.auto_awesome, size: 18),
-                label: Text(
-                  'Generate (${_weeks * _lessonsPerWeek} Lessons)',
-                  style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
-                ),
+                label: const Text('Generate Scheme', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryGreen,
                   padding: const EdgeInsets.symmetric(vertical: 13),
@@ -1027,82 +1238,52 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // STEP 4: Live Generation Animation
+  // STEP 4: Generating Screen Animation
   Widget _buildStep4Generating() {
     return Center(
-      key: const ValueKey(4),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: const BoxDecoration(
-                color: AppTheme.primaryGreenLight,
-                shape: BoxShape.circle,
-              ),
-              child: const Center(
-                child: SizedBox(
-                  width: 34,
-                  height: 34,
-                  child: CircularProgressIndicator(strokeWidth: 3.5, color: AppTheme.primaryGreen),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
+            const CircularProgressIndicator(color: AppTheme.primaryGreen, strokeWidth: 3),
+            const SizedBox(height: 24),
             Text(
-              'Generating CBC Scheme',
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppTheme.textDark),
+              'Generating KICD Scheme of Work',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.textDark),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Text(
-              '${_selectedGrade?.name} • ${_selectedSubject?.name}',
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.primaryGreen),
+              '${_selectedGrade?.name} ${_selectedSubject?.name} • $_selectedTerm $_selectedYear',
+              style: const TextStyle(fontSize: 13, color: AppTheme.primaryGreen, fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 20),
-
+            const SizedBox(height: 24),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppTheme.borderSubtle),
               ),
               child: Column(
-                children: List.generate(_progressTasks.length, (index) {
-                  final task = _progressTasks[index];
-                  final isDone = index < _completedTaskCount;
-                  final isCurrent = index == _completedTaskCount;
-
+                children: List.generate(_progressTasks.length, (idx) {
+                  final isDone = idx < _completedTaskCount;
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(
                       children: [
-                        if (isDone)
-                          const Icon(Icons.check_circle_rounded, size: 16, color: AppTheme.primaryGreen)
-                        else if (isCurrent)
-                          const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryGreen),
-                          )
-                        else
-                          const Icon(Icons.radio_button_unchecked, size: 16, color: Color(0xFFD1D5DB)),
+                        Icon(
+                          isDone ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+                          size: 16,
+                          color: isDone ? AppTheme.primaryGreen : AppTheme.textMuted,
+                        ),
                         const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            task,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: isDone ? FontWeight.w600 : FontWeight.w400,
-                              color: isDone
-                                  ? AppTheme.textDark
-                                  : isCurrent
-                                      ? AppTheme.primaryGreen
-                                      : AppTheme.textMuted,
-                            ),
+                        Text(
+                          _progressTasks[idx],
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: isDone ? FontWeight.w600 : FontWeight.normal,
+                            color: isDone ? AppTheme.textDark : AppTheme.textMuted,
                           ),
                         ),
                       ],

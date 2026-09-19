@@ -18,6 +18,10 @@ class CurriculumService {
   final _supabase = SupabaseService.instance;
   List<Grade> _cachedGrades = [];
 
+  bool _isUuid(String id) {
+    return RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(id);
+  }
+
   /// Fetch all grades
   Future<List<Grade>> getGrades() async {
     if (_supabase.isInitialized) {
@@ -40,7 +44,7 @@ class CurriculumService {
 
   /// Fetch subjects for a specific grade
   Future<List<Subject>> getSubjects(String gradeId, {Grade? grade}) async {
-    if (_supabase.isInitialized) {
+    if (_supabase.isInitialized && _isUuid(gradeId)) {
       try {
         final res = await _supabase.client
             .from('subjects')
@@ -79,7 +83,7 @@ class CurriculumService {
 
   /// Fetch reference books for a subject
   Future<List<ReferenceBook>> getReferenceBooks(String subjectId) async {
-    if (_supabase.isInitialized) {
+    if (_supabase.isInitialized && _isUuid(subjectId)) {
       try {
         final res = await _supabase.client
             .from('reference_books')
@@ -121,7 +125,7 @@ class CurriculumService {
 
   /// Fetch strands and sub-strands ordered by order_index
   Future<List<Strand>> getStrandsWithSubStrands(String subjectId) async {
-    if (_supabase.isInitialized) {
+    if (_supabase.isInitialized && _isUuid(subjectId)) {
       try {
         final strandsRes = await _supabase.client
             .from('strands')
@@ -159,7 +163,7 @@ class CurriculumService {
     required String subStrandId,
     String? referenceBookId,
   }) async {
-    if (_supabase.isInitialized) {
+    if (_supabase.isInitialized && _isUuid(subStrandId)) {
       try {
         final outcomesFuture = _supabase.client.from('learning_outcomes').select().eq('sub_strand_id', subStrandId);
         final questionsFuture = _supabase.client.from('key_inquiry_questions').select().eq('sub_strand_id', subStrandId);

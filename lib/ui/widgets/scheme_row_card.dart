@@ -101,6 +101,107 @@ class _SchemeRowCardState extends State<SchemeRowCard> {
   Widget build(BuildContext context) {
     final row = widget.row;
 
+    if (row.isMilestone) {
+      final isHalf = row.milestoneType == MilestoneType.halfTerm;
+      final bannerBg = isHalf ? const Color(0xFFFFFBEB) : const Color(0xFFEFF6FF);
+      final bannerBorder = isHalf ? const Color(0xFFFDE68A) : const Color(0xFFBFDBFE);
+      final bannerText = isHalf ? const Color(0xFF92400E) : const Color(0xFF1E40AF);
+      final icon = isHalf ? Icons.pause_circle_filled_rounded : Icons.assignment_turned_in_rounded;
+
+      return Card(
+        margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        elevation: 0,
+        color: bannerBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: bannerBorder, width: 1.2),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(icon, color: bannerText, size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      row.milestoneBannerText,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: bannerText,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isHalf ? 'National Mid-Term Break (No regular teaching)' : 'End of term assessment, consolidation & evaluation',
+                      style: TextStyle(fontSize: 11.5, color: bannerText.withValues(alpha: 0.8)),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, size: 20, color: bannerText),
+                onSelected: (val) {
+                  if (val == 'insert') widget.onInsertBelow();
+                  if (val == 'up') widget.onMoveUp?.call();
+                  if (val == 'down') widget.onMoveDown?.call();
+                  if (val == 'delete') widget.onDelete();
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'insert',
+                    child: Row(
+                      children: [
+                        Icon(Icons.add_circle_outline, size: 18, color: AppTheme.primaryEmerald),
+                        SizedBox(width: 8),
+                        Text('Insert Lesson Below'),
+                      ],
+                    ),
+                  ),
+                  if (widget.onMoveUp != null)
+                    const PopupMenuItem(
+                      value: 'up',
+                      child: Row(
+                        children: [
+                          Icon(Icons.arrow_upward, size: 18),
+                          SizedBox(width: 8),
+                          Text('Move Up'),
+                        ],
+                      ),
+                    ),
+                  if (widget.onMoveDown != null)
+                    const PopupMenuItem(
+                      value: 'down',
+                      child: Row(
+                        children: [
+                          Icon(Icons.arrow_downward, size: 18),
+                          SizedBox(width: 8),
+                          Text('Move Down'),
+                        ],
+                      ),
+                    ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Delete Row', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       elevation: 0,

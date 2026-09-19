@@ -11,9 +11,11 @@ class GuestStorageService {
   GuestStorageService._();
 
   SharedPreferences? _prefs;
+  static const int maxGuestSchemes = 20;
 
   Future<void> init() async {
     _prefs ??= await SharedPreferences.getInstance();
+    _migrateLegacySchemesIfAny();
   }
 
   SharedPreferences get prefs {
@@ -23,10 +25,29 @@ class GuestStorageService {
     return _prefs!;
   }
 
-  /// Get all guest schemes stored locally
+  void _migrateLegacySchemesIfAny() {
+    try {
+      final current = prefs.getString(AppConfig.guestSchemesKey);
+      if (current == null || current.isEmpty) {
+        final legacy = prefs.getString(AppConfig.legacyGuestSchemesKey);
+        if (legacy != null && legacy.isNotEmpty) {
+          prefs.setString(AppConfig.guestSchemesKey, legacy);
+          prefs.remove(AppConfig.legacyGuestSchemesKey);
+          debugPrint('Migrated legacy schemes to cbc:guest-schemes');
+        }
+      }
+    } catch (e) {
+      debugPrint('Legacy scheme migration check failed: $e');
+    }
+  }
+
+  /// Get all guest schemes stored locally (keeps up to 20 schemes)
   List<GuestScheme> getGuestSchemes() {
     try {
-      final jsonStr = prefs.getString(AppConfig.guestSchemesKey);
+      var jsonStr = prefs.getString(AppConfig.guestSchemesKey);
+      if (jsonStr == null || jsonStr.isEmpty) {
+        jsonStr = prefs.getString(AppConfig.legacyGuestSchemesKey);
+      }
       if (jsonStr == null || jsonStr.isEmpty) return [];
       final List<dynamic> decoded = jsonDecode(jsonStr);
       return decoded.map((item) => GuestScheme.fromJson(item as Map<String, dynamic>)).toList();
@@ -46,20 +67,35 @@ class GuestStorageService {
     }
   }
 
-  /// Save or replace a guest scheme
+  /// Get all companion schemes belonging to a specific bundleId
+  List<GuestScheme> getSchemesForBundle(String bundleId) {
+    return getGuestSchemes().where((s) => s.bundleId == bundleId).toList();
+  }
+
+  /// Save or replace a guest scheme (capped at 20 schemes)
   Future<void> saveGuestScheme(GuestScheme scheme) async {
     try {
       final list = getGuestSchemes();
       final index = list.indexWhere((s) => s.id == scheme.id);
       if (index >= 0) {
-        list[index] = scheme.copyWith(updatedAt: DateTime.now());
+        list[index] = scheme.copyWith(updatedAt: DateTime.now().toIso8601String());
       } else {
         list.insert(0, scheme);
       }
-      final jsonStr = jsonEncode(list.map((s) => s.toJson()).toList());
+      // Keep up to 20 schemes
+      final cappedList = list.take(maxGuestSchemes).toList();
+      final jsonStr = jsonEncode(cappedList.map((s) => s.toJson()).toList());
       await prefs.setString(AppConfig.guestSchemesKey, jsonStr);
     } catch (e) {
       debugPrint('Error saving guest scheme: $e');
+    }
+  }
+
+  /// Mark guest scheme as paid locally
+  Future<void> markSchemePaid(String id) async {
+    final scheme = getGuestScheme(id);
+    if (scheme != null) {
+      await saveGuestScheme(scheme.copyWith(isPaid: true));
     }
   }
 

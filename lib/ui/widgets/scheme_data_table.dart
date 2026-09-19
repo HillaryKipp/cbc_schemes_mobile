@@ -116,6 +116,60 @@ class SchemeDataTable extends StatelessWidget {
           ],
           rows: List.generate(rows.length, (index) {
             final row = rows[index];
+            if (row.isMilestone) {
+              final isHalf = row.milestoneType == MilestoneType.halfTerm;
+              final bannerBg = isHalf ? const Color(0xFFFFFBEB) : const Color(0xFFEFF6FF);
+              final bannerTextColor = isHalf ? const Color(0xFF92400E) : const Color(0xFF1E40AF);
+
+              return DataRow(
+                color: WidgetStateProperty.all(bannerBg),
+                cells: [
+                  DataCell(Center(child: Text('${row.weekNumber}', style: TextStyle(fontWeight: FontWeight.bold, color: bannerTextColor)))),
+                  DataCell(Center(child: Text('—', style: TextStyle(fontWeight: FontWeight.bold, color: bannerTextColor)))),
+                  DataCell(
+                    SizedBox(
+                      width: 140,
+                      child: Text(row.milestoneBannerText, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: bannerTextColor)),
+                    ),
+                  ),
+                  DataCell(
+                    SizedBox(
+                      width: 140,
+                      child: Text(row.reflections.isNotEmpty ? row.reflections : (isHalf ? 'MID-TERM BREAK' : 'ASSESSMENT'), style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: bannerTextColor)),
+                    ),
+                  ),
+                  DataCell(Center(child: Text('—', style: TextStyle(color: bannerTextColor)))),
+                  DataCell(Center(child: Text('—', style: TextStyle(color: bannerTextColor)))),
+                  DataCell(Center(child: Text('—', style: TextStyle(color: bannerTextColor)))),
+                  DataCell(Center(child: Text('—', style: TextStyle(color: bannerTextColor)))),
+                  DataCell(Center(child: Text('—', style: TextStyle(color: bannerTextColor)))),
+                  DataCell(
+                    InkWell(
+                      onTap: () => _editReflections(context, index, row),
+                      child: Text(row.reflections.isNotEmpty ? row.reflections : 'Add reflection', style: TextStyle(fontSize: 11, color: bannerTextColor, decoration: TextDecoration.underline)),
+                    ),
+                  ),
+                  DataCell(
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline, size: 18, color: AppTheme.primaryEmerald),
+                          tooltip: 'Insert Below',
+                          onPressed: () => onInsertBelow(index),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                          tooltip: 'Delete',
+                          onPressed: () => onDelete(index),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }
+
             return DataRow(
               color: WidgetStateProperty.resolveWith<Color?>((states) {
                 if (index % 2 == 1) return const Color(0xFFF8FAFC);

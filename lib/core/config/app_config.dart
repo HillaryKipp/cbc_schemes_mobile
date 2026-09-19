@@ -10,6 +10,8 @@ class AppConfig {
     'SUPPORT_EMAIL',
     defaultValue: 'support@cbcschemes.app',
   );
+  static const String whatsappSupportNumber = '254734232994';
+  static const String supportPhone = '0734232994';
 
   // Supabase Configuration
   static const String supabaseUrl = String.fromEnvironment(
@@ -22,8 +24,15 @@ class AppConfig {
     defaultValue: 'sb_publishable_gTNgTe0IjvAF-0tX697z-Q_Un_HXcdm',
   );
 
-  // Storage Keys
-  static const String guestSchemesKey = 'cbc_guest_schemes';
+  // Backend API URL (for Daraja M-Pesa STK push & payment query functions)
+  static const String backendUrl = String.fromEnvironment(
+    'BACKEND_URL',
+    defaultValue: 'https://cbcschemes.co.ke',
+  );
+
+  // Storage Keys (matches web localStorage key cbc:guest-schemes)
+  static const String guestSchemesKey = 'cbc:guest-schemes';
+  static const String legacyGuestSchemesKey = 'cbc_guest_schemes';
   static const String userThemeKey = 'cbc_theme_mode';
   static const String teacherProfileKey = 'cbc_teacher_profile';
   static const String userAccountKey = 'cbc_user_account';

@@ -3,8 +3,11 @@ import '../../../core/config/theme.dart';
 import '../../../models/scheme.dart';
 import '../../../services/curriculum_service.dart';
 import '../../../services/docx_export_service.dart';
+import '../../../services/mpesa_service.dart';
 import '../../../services/pdf_export_service.dart';
 import '../../../services/scheme_share_service.dart';
+
+import '../../widgets/whatsapp_support_button.dart';
 
 class SchemePreviewScreen extends StatefulWidget {
   final Scheme scheme;
@@ -29,80 +32,33 @@ class _SchemePreviewScreenState extends State<SchemePreviewScreen> {
   }
 
   Future<bool> _verifyAccess() async {
+    final bypass = await MpesaService.instance.shouldBypassPayment(_currentScheme);
+    if (bypass) return true;
+
     try {
       final appSettings = await CurriculumService.instance.getAppSettings();
-      if (appSettings.paymentsEnabled && !_currentScheme.isPaid) {
-        if (!mounted) return false;
-        final paid = await _showPaymentModal(appSettings.pricePerScheme, appSettings.supportPhone);
-        return paid == true;
-      }
-      return true;
+      if (!mounted) return false;
+
+      final success = await MpesaService.instance.showMpesaCheckoutSheet(
+        context: context,
+        scheme: _currentScheme,
+        amount: appSettings.pricePerScheme,
+        onPaymentSuccess: () {
+          setState(() {
+            _currentScheme = _currentScheme.copyWith(isPaid: true);
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Payment verified! Scheme unlocked for download and sharing.'),
+              backgroundColor: AppTheme.primaryGreen,
+            ),
+          );
+        },
+      );
+      return success;
     } catch (_) {
       return true;
     }
-  }
-
-  Future<bool?> _showPaymentModal(double price, String? supportPhone) {
-    return showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.payment_rounded, color: AppTheme.primaryGreen),
-            SizedBox(width: 8),
-            Text('Unlock Full Scheme', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Price: KES ${price.toStringAsFixed(0)}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.primaryGreen),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'A one-time payment gives you full rights to download, edit, print, and share this scheme to WhatsApp, Email, or Social media.',
-              style: TextStyle(fontSize: 13, color: AppTheme.textMuted, height: 1.35),
-            ),
-            if (supportPhone != null && supportPhone.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Text(
-                'M-Pesa / Till / Support: $supportPhone',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textDark),
-              ),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _currentScheme = _currentScheme.copyWith(isPaid: true);
-              });
-              Navigator.pop(ctx, true);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Payment verified! Scheme unlocked for download and sharing.'),
-                  backgroundColor: AppTheme.primaryGreen,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryGreen,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Pay with M-Pesa / Complete'),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _handleDownload(String type) async {
@@ -184,11 +140,60 @@ class _SchemePreviewScreenState extends State<SchemePreviewScreen> {
             ),
           ],
         ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        floatingActionButton: const WhatsAppSupportButton(mini: true),
+        body: sortedRows.isEmpty
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFEF3C7),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.menu_book_rounded, size: 40, color: Color(0xFFD97706)),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        '${scheme.gradeName ?? "Grade"} ${scheme.subjectName ?? "Subject"} Scheme Being Finalized',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'This scheme of work is currently being prepared according to the 2026 KICD CBC curriculum designs.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          WhatsAppSupportButton.openWhatsApp(
+                            context,
+                            'Hello! I would like to request the scheme of work for ${scheme.gradeName ?? "Grade"} ${scheme.subjectName ?? "Subject"} ${scheme.termName}.',
+                          );
+                        },
+                        icon: const Icon(Icons.chat, size: 18),
+                        label: const Text('Request Scheme on WhatsApp (0734232994)'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF25D366),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
               // Download Actions Bar
               Container(
                 padding: const EdgeInsets.all(14),

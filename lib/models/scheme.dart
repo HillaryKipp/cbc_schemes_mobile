@@ -1,4 +1,5 @@
 import 'scheme_row.dart';
+import 'guest_scheme.dart';
 
 class Scheme {
   final String id;
@@ -13,6 +14,8 @@ class Scheme {
   final String? tscNumber;
   final String? hodName;
   final bool isPaid;
+  final String? bundleId;
+  final List<BundleTermInfo>? bundleTerms;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -35,6 +38,8 @@ class Scheme {
     this.tscNumber,
     this.hodName,
     this.isPaid = false,
+    this.bundleId,
+    this.bundleTerms,
     this.createdAt,
     this.updatedAt,
     this.gradeName,
@@ -44,6 +49,13 @@ class Scheme {
   });
 
   factory Scheme.fromJson(Map<String, dynamic> json, {List<SchemeRow>? rows}) {
+    List<BundleTermInfo>? bTerms;
+    if (json['bundle_terms'] != null && json['bundle_terms'] is List) {
+      bTerms = (json['bundle_terms'] as List)
+          .map((t) => BundleTermInfo.fromMap(t as Map<String, dynamic>))
+          .toList();
+    }
+
     return Scheme(
       id: json['id'] as String,
       userId: json['user_id'] as String?,
@@ -57,6 +69,8 @@ class Scheme {
       tscNumber: json['tsc_number'] as String?,
       hodName: json['hod_name'] as String?,
       isPaid: json['is_paid'] as bool? ?? false,
+      bundleId: json['bundle_id'] as String?,
+      bundleTerms: bTerms,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at']) : null,
       updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at']) : null,
       gradeName: json['grades'] != null ? json['grades']['name'] as String? : json['grade_name'] as String?,
@@ -80,6 +94,8 @@ class Scheme {
       'tsc_number': tscNumber,
       'hod_name': hodName,
       'is_paid': isPaid,
+      if (bundleId != null) 'bundle_id': bundleId,
+      if (bundleTerms != null) 'bundle_terms': bundleTerms!.map((t) => t.toMap()).toList(),
     };
   }
 
@@ -96,6 +112,8 @@ class Scheme {
     String? tscNumber,
     String? hodName,
     bool? isPaid,
+    String? bundleId,
+    List<BundleTermInfo>? bundleTerms,
     DateTime? createdAt,
     DateTime? updatedAt,
     String? gradeName,
@@ -116,12 +134,39 @@ class Scheme {
       tscNumber: tscNumber ?? this.tscNumber,
       hodName: hodName ?? this.hodName,
       isPaid: isPaid ?? this.isPaid,
+      bundleId: bundleId ?? this.bundleId,
+      bundleTerms: bundleTerms ?? this.bundleTerms,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       gradeName: gradeName ?? this.gradeName,
       subjectName: subjectName ?? this.subjectName,
       referenceBookTitle: referenceBookTitle ?? this.referenceBookTitle,
       rows: rows ?? this.rows,
+    );
+  }
+
+  /// Converts this Scheme model into a GuestScheme for local storage
+  GuestScheme toGuestScheme() {
+    return GuestScheme(
+      id: id,
+      createdAt: (createdAt ?? DateTime.now()).toIso8601String(),
+      gradeId: gradeId,
+      subjectId: subjectId,
+      referenceBookId: referenceBookId,
+      termName: termName,
+      year: year,
+      schoolName: schoolName,
+      teacherName: teacherName,
+      tscNumber: tscNumber,
+      hodName: hodName,
+      isPaid: isPaid,
+      bundleId: bundleId,
+      bundleTerms: bundleTerms,
+      rows: rows.map(GuestRow.fromSchemeRow).toList(),
+      gradeName: gradeName,
+      subjectName: subjectName,
+      referenceBookTitle: referenceBookTitle,
+      updatedAt: (updatedAt ?? DateTime.now()).toIso8601String(),
     );
   }
 }

@@ -172,6 +172,33 @@ class SchemeEditorProvider extends ChangeNotifier {
     });
   }
 
+  /// Update cover page details and persist
+  Future<void> updateCoverDetails({
+    String? schoolName,
+    String? teacherName,
+    String? tscNumber,
+    String? hodName,
+  }) async {
+    if (_scheme == null) return;
+    _scheme = _scheme!.copyWith(
+      schoolName: schoolName,
+      teacherName: teacherName,
+      tscNumber: tscNumber,
+      hodName: hodName,
+    );
+    notifyListeners();
+
+    final isGuest = _scheme!.id.startsWith('guest-') || _scheme!.userId == null;
+    await _syncService.updateCoverDetails(
+      schemeId: _scheme!.id,
+      schoolName: schoolName,
+      teacherName: teacherName,
+      tscNumber: tscNumber,
+      hodName: hodName,
+      isGuest: isGuest,
+    );
+  }
+
   /// Returns current scheme snapshot with live modified rows
   Scheme get updatedScheme {
     if (_scheme == null) throw StateError('Scheme is null');

@@ -5,6 +5,7 @@ import '../../../models/grade.dart';
 import '../../../models/subject.dart';
 import '../../../models/reference_book.dart';
 import '../generate/generate_wizard_screen.dart';
+import '../../widgets/whatsapp_support_button.dart';
 
 class SchemeDetailScreen extends StatelessWidget {
   final Grade grade;
@@ -32,6 +33,7 @@ class SchemeDetailScreen extends StatelessWidget {
       canPop: true,
       child: Scaffold(
         backgroundColor: AppTheme.surfaceBg,
+        floatingActionButton: const WhatsAppSupportButton(mini: true),
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new, size: 18),
