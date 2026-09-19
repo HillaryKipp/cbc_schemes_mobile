@@ -100,12 +100,17 @@ class TermCalendarCustomizer extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                isBundleMode
-                    ? '3. Academic Calendar & Assessment Weeks'
-                    : '3. Term Calendar & Break Settings (${settings.termName})',
-                style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: AppTheme.textDark),
+              Expanded(
+                child: Text(
+                  isBundleMode
+                      ? '3. Academic Calendar & Assessment Weeks'
+                      : '3. Term Calendar & Break Settings (${settings.termName})',
+                  style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: AppTheme.textDark),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -297,27 +302,34 @@ class TermCalendarCustomizer extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: Checkbox(
-                            value: settings.includeHalfTerm,
-                            activeColor: AppTheme.primaryGreen,
-                            onChanged: (val) {
-                              onTermSettingsChanged(settings.copyWith(includeHalfTerm: val ?? true));
-                            },
+                    Expanded(
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: Checkbox(
+                              value: settings.includeHalfTerm,
+                              activeColor: AppTheme.primaryGreen,
+                              onChanged: (val) {
+                                onTermSettingsChanged(settings.copyWith(includeHalfTerm: val ?? true));
+                              },
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Include Half Term Break (MID-TERM)',
-                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppTheme.textDark),
-                        ),
-                      ],
+                          const SizedBox(width: 6),
+                          const Expanded(
+                            child: Text(
+                              'Include Half Term Break (MID-TERM)',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textDark),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    if (settings.includeHalfTerm)
+                    if (settings.includeHalfTerm) ...[
+                      const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
@@ -329,37 +341,133 @@ class TermCalendarCustomizer extends StatelessWidget {
                           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
                         ),
                       ),
+                    ],
                   ],
                 ),
                 if (settings.includeHalfTerm) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
-                      const Text('Half Term Break Week:', style: TextStyle(fontSize: 11.5, color: AppTheme.textDark)),
-                      const SizedBox(width: 10),
-                      DropdownButton<int>(
-                        value: settings.halfTermWeek.clamp(1, totalWeeks),
-                        isDense: true,
-                        underline: const SizedBox.shrink(),
-                        items: List.generate(totalWeeks, (i) => i + 1).map((w) {
-                          final isMinistry = (currentTerm == 3 && w == 6) || (currentTerm != 3 && w == 8);
-                          return DropdownMenuItem(
-                            value: w,
-                            child: Text(
-                              'Week $w ${isMinistry ? '(Ministry Default)' : ''}',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      // Mid-Term Start Date
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => _pickDate(
+                            context,
+                            settings.midTermStartDate.isNotEmpty ? settings.midTermStartDate : '2026-02-25',
+                            (newDate) {
+                              onTermSettingsChanged(settings.copyWith(midTermStartDate: newDate));
+                            },
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: AppTheme.borderSubtle),
+                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.white,
                             ),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) {
-                            onTermSettingsChanged(settings.copyWith(halfTermWeek: val));
-                          }
-                        },
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Break Start', style: TextStyle(fontSize: 9.5, color: AppTheme.textMuted)),
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.event, size: 12, color: AppTheme.primaryGreen),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      settings.midTermStartDate.isNotEmpty ? settings.midTermStartDate : 'Pick date',
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+
+                      // Mid-Term End Date
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => _pickDate(
+                            context,
+                            settings.midTermEndDate.isNotEmpty ? settings.midTermEndDate : '2026-03-01',
+                            (newDate) {
+                              onTermSettingsChanged(settings.copyWith(midTermEndDate: newDate));
+                            },
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: AppTheme.borderSubtle),
+                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.white,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Break End', style: TextStyle(fontSize: 9.5, color: AppTheme.textMuted)),
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.event_available, size: 12, color: AppTheme.primaryGreen),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      settings.midTermEndDate.isNotEmpty ? settings.midTermEndDate : 'Pick date',
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+
+                      // Half Term Week Selector
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: AppTheme.borderSubtle),
+                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.white,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Break Week', style: TextStyle(fontSize: 9.5, color: AppTheme.textMuted)),
+                              DropdownButton<int>(
+                                value: settings.halfTermWeek.clamp(1, totalWeeks),
+                                isDense: true,
+                                isExpanded: true,
+                                underline: const SizedBox.shrink(),
+                                items: List.generate(totalWeeks, (i) => i + 1).map((w) {
+                                  return DropdownMenuItem(
+                                    value: w,
+                                    child: Text(
+                                      'Week $w',
+                                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    onTermSettingsChanged(settings.copyWith(halfTermWeek: val));
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   const Text(
                     '2026 Guideline: Term 1 (Feb 25–Mar 1), Term 2 (Jun 24–28), Term 3 (Early Oct).',
                     style: TextStyle(fontSize: 10.5, color: AppTheme.textMuted),
@@ -384,19 +492,26 @@ class TermCalendarCustomizer extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${settings.termName} Assessment Weeks',
-                          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppTheme.textDark),
-                        ),
-                        const Text(
-                          'Defaults to end week. Click chips to add/remove.',
-                          style: TextStyle(fontSize: 10.5, color: AppTheme.textMuted),
-                        ),
-                      ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${settings.termName} Assessment Weeks',
+                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppTheme.textDark),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const Text(
+                            'Defaults to end week. Click chips to add/remove.',
+                            style: TextStyle(fontSize: 10.5, color: AppTheme.textMuted),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       '${settings.assessmentWeeks.length} ${settings.assessmentWeeks.length == 1 ? 'week' : 'weeks'}',
                       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),

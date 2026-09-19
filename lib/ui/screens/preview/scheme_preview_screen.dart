@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
 import '../../../core/config/theme.dart';
+import '../../../models/grade.dart';
+import '../../../models/subject.dart';
 import '../../../models/scheme.dart';
+import '../../../models/scheme_row.dart';
 import '../../../services/curriculum_service.dart';
 import '../../../services/docx_export_service.dart';
+import '../../../services/guest_storage_service.dart';
 import '../../../services/mpesa_service.dart';
 import '../../../services/pdf_export_service.dart';
+import '../../../services/scheme_generator.dart';
 import '../../../services/scheme_share_service.dart';
-
 import '../../widgets/whatsapp_support_button.dart';
 
 class SchemePreviewScreen extends StatefulWidget {
@@ -23,12 +29,52 @@ class SchemePreviewScreen extends StatefulWidget {
 
 class _SchemePreviewScreenState extends State<SchemePreviewScreen> {
   bool _isExporting = false;
+  bool _isPopulatingRows = false;
   late Scheme _currentScheme;
 
   @override
   void initState() {
     super.initState();
     _currentScheme = widget.scheme;
+    if (_currentScheme.rows.isEmpty) {
+      _ensureRowsPopulated();
+    }
+  }
+
+  Future<void> _ensureRowsPopulated() async {
+    setState(() => _isPopulatingRows = true);
+    try {
+      final grade = Grade(
+        id: _currentScheme.gradeId,
+        name: _currentScheme.gradeName ?? 'Grade 1',
+      );
+      final subject = Subject(
+        id: _currentScheme.subjectId,
+        gradeId: grade.id,
+        name: _currentScheme.subjectName ?? 'Learning Area',
+      );
+      final generated = await SchemeGenerator.generateScheme(
+        grade: grade,
+        subject: subject,
+        termName: _currentScheme.termName,
+        year: _currentScheme.year,
+        weeks: 13,
+        lessonsPerWeek: 5,
+        schoolName: _currentScheme.schoolName,
+        teacherName: _currentScheme.teacherName,
+        tscNumber: _currentScheme.tscNumber,
+        hodName: _currentScheme.hodName,
+      );
+      if (!mounted) return;
+      setState(() {
+        _currentScheme = _currentScheme.copyWith(rows: generated.rows);
+        _isPopulatingRows = false;
+      });
+      GuestStorageService.instance.saveGuestScheme(_currentScheme.toGuestScheme());
+    } catch (e) {
+      debugPrint('Error populating fallback scheme rows: $e');
+      if (mounted) setState(() => _isPopulatingRows = false);
+    }
   }
 
   Future<bool> _verifyAccess() async {
@@ -50,7 +96,7 @@ class _SchemePreviewScreenState extends State<SchemePreviewScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Payment verified! Scheme unlocked for download and sharing.'),
-              backgroundColor: AppTheme.primaryGreen,
+              backgroundColor: AppTheme.primaryBlue,
             ),
           );
         },
@@ -117,325 +163,355 @@ class _SchemePreviewScreenState extends State<SchemePreviewScreen> {
     }
   }
 
+  void _editCoverDetails() {
+    final schoolCtrl = TextEditingController(text: _currentScheme.schoolName ?? '');
+    final teacherCtrl = TextEditingController(text: _currentScheme.teacherName ?? '');
+    final tscCtrl = TextEditingController(text: _currentScheme.tscNumber ?? '');
+    final hodCtrl = TextEditingController(text: _currentScheme.hodName ?? '');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Edit Cover Page Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.textDark)),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: schoolCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'School Name',
+                  prefixIcon: Icon(Icons.school_outlined, color: AppTheme.primaryBlue),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: teacherCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Teacher Name',
+                  prefixIcon: Icon(Icons.person_outline, color: AppTheme.primaryBlue),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: tscCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'TSC / ID No.',
+                        prefixIcon: Icon(Icons.badge_outlined, color: AppTheme.primaryBlue),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: hodCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'H.O.D Name',
+                        prefixIcon: Icon(Icons.supervisor_account_outlined, color: AppTheme.primaryBlue),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    final updated = _currentScheme.copyWith(
+                      schoolName: schoolCtrl.text.trim(),
+                      teacherName: teacherCtrl.text.trim(),
+                      tscNumber: tscCtrl.text.trim(),
+                      hodName: hodCtrl.text.trim(),
+                    );
+                    setState(() => _currentScheme = updated);
+                    GuestStorageService.instance.saveTeacherProfile(
+                      schoolName: schoolCtrl.text.trim(),
+                      teacherName: teacherCtrl.text.trim(),
+                      tscNumber: tscCtrl.text.trim(),
+                      hodName: hodCtrl.text.trim(),
+                    );
+                    await GuestStorageService.instance.saveGuestScheme(updated.toGuestScheme());
+                    if (!ctx.mounted) return;
+                    Navigator.pop(ctx);
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Cover details updated successfully!')),
+                    );
+                  },
+                  icon: const Icon(Icons.check, size: 18),
+                  label: const Text('Save Cover Details', style: TextStyle(fontWeight: FontWeight.w700)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryBlue,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = _currentScheme;
-    final sortedRows = List.from(scheme.rows)..sort((a, b) => a.position.compareTo(b.position));
+    final sortedRows = List<SchemeRow>.from(scheme.rows)..sort((a, b) => a.position.compareTo(b.position));
 
     return PopScope(
       canPop: true,
       child: Scaffold(
         backgroundColor: AppTheme.surfaceBg,
         appBar: AppBar(
+          centerTitle: true,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new, size: 18),
             onPressed: () => Navigator.maybePop(context),
           ),
-          title: const Text('Preview, Share & Download', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          title: Text(
+            '${scheme.gradeName ?? "Grade"} ${scheme.subjectName ?? "Subject"}',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          ),
           actions: [
-            IconButton(
-              tooltip: 'Print Scheme',
-              icon: const Icon(Icons.print_outlined),
-              onPressed: _isExporting ? null : () => _handleDownload('print'),
+            TextButton.icon(
+              onPressed: _editCoverDetails,
+              icon: const Icon(Icons.edit_document, size: 16, color: AppTheme.primaryBlue),
+              label: const Text(
+                'Edit Cover',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.primaryBlue,
+                ),
+              ),
+              style: TextButton.styleFrom(
+                backgroundColor: AppTheme.primaryBlueLight,
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
             ),
+            const SizedBox(width: 4),
+            const WhatsAppSupportButton(mini: true),
+            const SizedBox(width: 8),
           ],
         ),
-        floatingActionButton: const WhatsAppSupportButton(mini: true),
-        body: sortedRows.isEmpty
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFFEF3C7),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.menu_book_rounded, size: 40, color: Color(0xFFD97706)),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        '${scheme.gradeName ?? "Grade"} ${scheme.subjectName ?? "Subject"} Scheme Being Finalized',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textDark),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'This scheme of work is currently being prepared according to the 2026 KICD CBC curriculum designs.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
-                      ),
-                      const SizedBox(height: 20),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          WhatsAppSupportButton.openWhatsApp(
-                            context,
-                            'Hello! I would like to request the scheme of work for ${scheme.gradeName ?? "Grade"} ${scheme.subjectName ?? "Subject"} ${scheme.termName}.',
-                          );
-                        },
-                        icon: const Icon(Icons.chat, size: 18),
-                        label: const Text('Request Scheme on WhatsApp (0734232994)'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF25D366),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            : SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        floatingActionButton: _buildFloatingActionBar(),
+        body: _isPopulatingRows
+            ? const Center(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-              // Download Actions Bar
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppTheme.borderSubtle),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Download & Export Options',
-                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppTheme.textDark),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _isExporting ? null : () => _handleDownload('pdf'),
-                            icon: const Icon(Icons.picture_as_pdf, size: 17),
-                            label: const Text('Download PDF', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primaryGreen,
-                              padding: const EdgeInsets.symmetric(vertical: 11),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _isExporting ? null : () => _handleDownload('docx'),
-                            icon: const Icon(Icons.description, size: 17, color: Color(0xFF2563EB)),
-                            label: const Text('Download Word', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF2563EB),
-                              side: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
-                              padding: const EdgeInsets.symmetric(vertical: 11),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                          ),
-                        ),
-                      ],
+                    CircularProgressIndicator(color: AppTheme.primaryBlue),
+                    SizedBox(height: 14),
+                    Text(
+                      'Generating complete CBC scheme rows...',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5, color: AppTheme.textDark),
                     ),
                   ],
                 ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Share Channels Card (WhatsApp, Email, Social Media)
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppTheme.borderSubtle),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Share Scheme With Colleagues',
-                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppTheme.textDark),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        // WhatsApp Button
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _isExporting ? null : () => _handleShare('whatsapp'),
-                            icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
-                            label: const Text('WhatsApp', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+              )
+            : sortedRows.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFEF3C7),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.menu_book_rounded, size: 40, color: Color(0xFFD97706)),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            '${scheme.gradeName ?? "Grade"} ${scheme.subjectName ?? "Subject"} Scheme Being Finalized',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'This scheme of work is currently being prepared according to the 2026 KICD CBC curriculum designs.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                          ),
+                          const SizedBox(height: 20),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              WhatsAppSupportButton.openWhatsApp(
+                                context,
+                                'Hello! I would like to request the scheme of work for ${scheme.gradeName ?? "Grade"} ${scheme.subjectName ?? "Subject"} ${scheme.termName}.',
+                              );
+                            },
+                            icon: const Icon(Icons.chat, size: 18),
+                            label: const Text('Request Scheme on WhatsApp (0734232994)'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF25D366),
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-
-                        // Email Button
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _isExporting ? null : () => _handleShare('email'),
-                            icon: const Icon(Icons.email_outlined, size: 16),
-                            label: const Text('Email', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF3B82F6),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-
-                        // Social / All Apps Button
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _isExporting ? null : () => _handleShare('social'),
-                            icon: const Icon(Icons.share_outlined, size: 16),
-                            label: const Text('More Apps', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF4B5563),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Document Paper Container (Preview)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.borderSubtle),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      (scheme.schoolName?.trim().isNotEmpty == true)
-                          ? scheme.schoolName!.toUpperCase()
-                          : 'KENYA COMPETENCY BASED CURRICULUM (CBC)',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'SCHEMES OF WORK - ${scheme.termName.toUpperCase()}, ${scheme.year}',
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Metadata Summary Box
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppTheme.borderSubtle),
+                        ],
                       ),
-                      child: Wrap(
-                        spacing: 16,
-                        runSpacing: 8,
+                    ),
+                  )
+                : PdfPreview(
+                    key: ValueKey(
+                      '${_currentScheme.id}_${_currentScheme.schoolName}_${_currentScheme.teacherName}_${_currentScheme.tscNumber}_${_currentScheme.hodName}_${_currentScheme.rows.length}',
+                    ),
+                    build: (format) => PdfExportService.generateSchemePdf(_currentScheme),
+                    initialPageFormat: PdfPageFormat.a4.landscape,
+                    allowPrinting: false,
+                    allowSharing: false,
+                    canChangePageFormat: false,
+                    canChangeOrientation: false,
+                    canDebug: false,
+                    useActions: false,
+                    previewPageMargin: const EdgeInsets.only(left: 8, right: 8, top: 8, bottom: 84),
+                    loadingWidget: const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _buildMetaItem('GRADE', scheme.gradeName ?? 'Grade'),
-                          _buildMetaItem('LEARNING AREA', scheme.subjectName ?? 'Subject'),
-                          _buildMetaItem('TEACHER', scheme.teacherName ?? '-'),
-                          _buildMetaItem('TSC NO', scheme.tscNumber ?? '-'),
-                          _buildMetaItem('COURSE BOOK', scheme.referenceBookTitle ?? 'KICD Approved'),
-                          _buildMetaItem('H.O.D', scheme.hodName ?? '-'),
+                          CircularProgressIndicator(color: AppTheme.primaryBlue),
+                          SizedBox(height: 12),
+                          Text(
+                            'Rendering official print-ready PDF scheme document...',
+                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppTheme.textDark),
+                          ),
                         ],
                       ),
                     ),
-
-                    const SizedBox(height: 16),
-
-                    Text(
-                      'Complete official scheme with ${sortedRows.length} lesson slots across 10 official KICD columns.',
-                      style: const TextStyle(fontSize: 12, color: AppTheme.textMuted, fontStyle: FontStyle.italic),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Mini preview table
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        headingRowColor: WidgetStateProperty.all(AppTheme.primaryGreen),
-                        headingTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
-                        dataRowMinHeight: 36,
-                        dataRowMaxHeight: 60,
-                        border: TableBorder.all(color: AppTheme.borderSubtle, width: 0.5),
-                        columns: const [
-                          DataColumn(label: Text('Wk')),
-                          DataColumn(label: Text('Lsn')),
-                          DataColumn(label: Text('Strand')),
-                          DataColumn(label: Text('Sub-Strand')),
-                          DataColumn(label: Text('Specific Learning Outcomes')),
-                          DataColumn(label: Text('Key Inquiry Questions')),
-                        ],
-                        rows: sortedRows.take(8).map((r) {
-                          return DataRow(
-                            cells: [
-                              DataCell(Text('${r.weekNumber}')),
-                              DataCell(Text('${r.lessonNumber}')),
-                              DataCell(Text(r.strandName, style: const TextStyle(fontSize: 11))),
-                              DataCell(Text(r.subStrandName, style: const TextStyle(fontSize: 11))),
-                              DataCell(SizedBox(
-                                width: 200,
-                                child: Text(r.learningOutcomes.join(', '), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10.5)),
-                              )),
-                              DataCell(SizedBox(
-                                width: 160,
-                                child: Text(r.keyInquiryQuestions.join(', '), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10.5)),
-                              )),
-                            ],
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                    if (sortedRows.length > 8) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        '+ ${sortedRows.length - 8} more lesson rows included in export',
-                        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppTheme.primaryGreen),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+                  ),
       ),
     );
   }
 
-  Widget _buildMetaItem(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.textMuted)),
-        Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textDark)),
-      ],
+  Widget _buildFloatingActionBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: AppTheme.borderSubtle),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.16),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: _isExporting
+          ? const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryBlue),
+                  ),
+                  SizedBox(width: 10),
+                  Text('Exporting scheme...', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.primaryBlue)),
+                ],
+              ),
+            )
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Print Button
+                ElevatedButton.icon(
+                  onPressed: () => _handleDownload('print'),
+                  icon: const Icon(Icons.print_rounded, size: 16),
+                  label: const Text('Print', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
+                ),
+                const SizedBox(width: 6),
+
+                // PDF Button
+                ElevatedButton.icon(
+                  onPressed: () => _handleDownload('pdf'),
+                  icon: const Icon(Icons.picture_as_pdf_rounded, size: 15),
+                  label: const Text('PDF', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryNavy,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
+                ),
+                const SizedBox(width: 6),
+
+                // Word DOCX Button
+                OutlinedButton.icon(
+                  onPressed: () => _handleDownload('docx'),
+                  icon: const Icon(Icons.description_rounded, size: 15, color: Color(0xFF2563EB)),
+                  label: const Text('Word', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: Color(0xFF2563EB))),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
+                ),
+                const SizedBox(width: 6),
+
+                // WhatsApp Share Button
+                ElevatedButton.icon(
+                  onPressed: () => _handleShare('whatsapp'),
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 15),
+                  label: const Text('Share', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF25D366),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }

@@ -9,7 +9,6 @@ import '../../../state/scheme_list_provider.dart';
 import '../../widgets/claim_account_banner.dart';
 import '../../widgets/stat_badge.dart';
 import '../auth/auth_modal.dart';
-import '../editor/scheme_editor_screen.dart';
 import '../generate/generate_wizard_screen.dart';
 import '../preview/scheme_preview_screen.dart';
 
@@ -126,7 +125,7 @@ class DashboardScreen extends StatelessWidget {
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (ctx) => SchemeEditorScreen(scheme: scheme),
+            builder: (ctx) => SchemePreviewScreen(scheme: scheme),
           ),
         ),
         child: Padding(
@@ -235,7 +234,7 @@ class DashboardScreen extends StatelessWidget {
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (ctx) => SchemeEditorScreen(scheme: scheme),
+            builder: (ctx) => SchemePreviewScreen(scheme: scheme),
           ),
         ),
         child: Padding(

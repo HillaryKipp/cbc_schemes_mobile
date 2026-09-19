@@ -27,6 +27,23 @@ class TermSettings {
 
   int get totalLessonSlots => weeks * lessonsPerWeek;
 
+  /// Number of active teaching slots excluding half-term breaks and assessment weeks
+  int get availableTeachingSlots {
+    final lpw = lessonsPerWeek > 0 ? lessonsPerWeek : 5;
+    final wks = weeks > 0 ? weeks : 13;
+    var nonTeachingWeeks = 0;
+    if (includeHalfTerm && halfTermWeek > 0 && halfTermWeek <= wks) {
+      nonTeachingWeeks += 1;
+    }
+    for (final aw in assessmentWeeks) {
+      if (aw > 0 && aw <= wks && (!includeHalfTerm || aw != halfTermWeek)) {
+        nonTeachingWeeks += 1;
+      }
+    }
+    final teachingWeeks = (wks - nonTeachingWeeks).clamp(1, wks);
+    return teachingWeeks * lpw;
+  }
+
   TermSettings copyWith({
     int? termNumber,
     String? termName,

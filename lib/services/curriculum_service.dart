@@ -44,22 +44,24 @@ class CurriculumService {
 
   /// Fetch subjects for a specific grade
   Future<List<Subject>> getSubjects(String gradeId, {Grade? grade}) async {
-    if (_supabase.isInitialized && _isUuid(gradeId)) {
-      try {
-        final res = await _supabase.client
-            .from('subjects')
-            .select()
-            .eq('grade_id', gradeId)
-            .order('order_index', ascending: true);
-        if (res.isNotEmpty) {
+    if (_supabase.isInitialized) {
+      if (_isUuid(gradeId)) {
+        try {
+          final res = await _supabase.client
+              .from('subjects')
+              .select()
+              .eq('grade_id', gradeId)
+              .order('order_index', ascending: true);
           return (res as List).map((e) => Subject.fromJson(e as Map<String, dynamic>)).toList();
+        } catch (e) {
+          debugPrint('Error loading subjects from Supabase: $e');
+          return [];
         }
-      } catch (e) {
-        debugPrint('Error loading subjects from Supabase: $e');
       }
+      return [];
     }
 
-    // Resolve grade from argument, cache, or seed data to ensure grade-level accuracy
+    // Resolve grade from argument, cache, or seed data to ensure grade-level accuracy (Offline/Mock only)
     Grade? resolvedGrade = grade;
     if (resolvedGrade == null) {
       for (final g in _cachedGrades) {

@@ -145,8 +145,8 @@ class ScopeAndSequenceCustomizer extends StatelessWidget {
         final cards = [1, 2, 3].map((term) {
           final settings = termSettings[term]!;
           final totalLessons = _getAllocatedLessons(term);
-          final totalSlots = settings.totalLessonSlots;
-          final pct = totalSlots > 0 ? (totalLessons / totalSlots).clamp(0.0, 1.0) : 0.0;
+          final teachingSlots = settings.availableTeachingSlots;
+          final pct = teachingSlots > 0 ? (totalLessons / teachingSlots).clamp(0.0, 1.0) : 0.0;
           final isSelected = activeTermFilter == term || (activeTermFilter == 0 && isBundleMode);
 
           return InkWell(
@@ -199,7 +199,7 @@ class ScopeAndSequenceCustomizer extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${settings.weeks} wks • ${settings.lessonsPerWeek} lpw (${settings.totalLessonSlots} slots)',
+                    '${settings.weeks} wks • ${settings.lessonsPerWeek} lpw ($teachingSlots teaching slots)',
                     style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
                   ),
                   const SizedBox(height: 8),
@@ -221,7 +221,7 @@ class ScopeAndSequenceCustomizer extends StatelessWidget {
                         style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
                       ),
                       Text(
-                        '${(pct * 100).round()}% filled',
+                        '${(pct * 100).round()}% teaching slots filled',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
@@ -257,15 +257,19 @@ class ScopeAndSequenceCustomizer extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppTheme.borderSubtle),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 8,
         children: [
           const Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.tune_rounded, size: 16, color: AppTheme.primaryGreen),
               SizedBox(width: 6),
               Text(
-                'Distribution preset:',
+                'Quick distribution presets:',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textMuted),
               ),
             ],
@@ -274,7 +278,7 @@ class ScopeAndSequenceCustomizer extends StatelessWidget {
             onPressed: onAutoBalance,
             icon: const Icon(Icons.sync_rounded, size: 14, color: AppTheme.primaryGreen),
             label: const Text(
-              'Auto-balance 3 Terms',
+              'Auto-balance across 3 Terms',
               style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppTheme.primaryGreen),
             ),
             style: OutlinedButton.styleFrom(
@@ -327,7 +331,7 @@ class ScopeAndSequenceCustomizer extends StatelessWidget {
                 Container(
                   width: 24,
                   height: 24,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: AppTheme.primaryGreenLight,
                     shape: BoxShape.circle,
                   ),
@@ -351,7 +355,7 @@ class ScopeAndSequenceCustomizer extends StatelessWidget {
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.textDark),
                       ),
                       Text(
-                        '${strand.subStrands.length} sub-strands • ~$totalSuggestedLessons suggested lessons',
+                        '${strand.subStrands.length} sub-strands • ~$totalSuggestedLessons total lessons',
                         style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
                       ),
                     ],
@@ -365,11 +369,11 @@ class ScopeAndSequenceCustomizer extends StatelessWidget {
                   itemBuilder: (ctx) => [
                     const PopupMenuItem(
                       enabled: false,
-                      child: Text('Move all sub-strands to:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      child: Text('Move all to:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                     ),
-                    const PopupMenuItem(value: 1, child: Text('Term 1 (13 Weeks)')),
-                    const PopupMenuItem(value: 2, child: Text('Term 2 (14 Weeks)')),
-                    const PopupMenuItem(value: 3, child: Text('Term 3 (9 Weeks)')),
+                    const PopupMenuItem(value: 1, child: Text('Term 1')),
+                    const PopupMenuItem(value: 2, child: Text('Term 2')),
+                    const PopupMenuItem(value: 3, child: Text('Term 3')),
                   ],
                 ),
               ],
@@ -412,7 +416,7 @@ class ScopeAndSequenceCustomizer extends StatelessWidget {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'KICD recommendation: $defaultLessons lessons',
+                                'KICD curriculum recommendation: $defaultLessons lessons',
                                 style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
                               ),
                             ],
@@ -423,11 +427,15 @@ class ScopeAndSequenceCustomizer extends StatelessWidget {
                     const SizedBox(height: 8),
 
                     // Term selector chips & Lesson counter
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 12,
+                      runSpacing: 8,
                       children: [
-                        // Term Chips [1] [2] [3]
+                        // Term Chips [T1] [T2] [T3]
                         Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [1, 2, 3].map((t) {
                             final isCurTerm = assignedTerm == t;
                             return Padding(
@@ -436,7 +444,7 @@ class ScopeAndSequenceCustomizer extends StatelessWidget {
                                 onTap: () => _moveSubStrand(subStrand.id, strand.id, t, defaultLessons),
                                 borderRadius: BorderRadius.circular(6),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
                                     color: isCurTerm ? AppTheme.primaryGreen : const Color(0xFFF3F4F6),
                                     borderRadius: BorderRadius.circular(6),
@@ -445,10 +453,10 @@ class ScopeAndSequenceCustomizer extends StatelessWidget {
                                     ),
                                   ),
                                   child: Text(
-                                    'Term $t',
+                                    'T$t',
                                     style: TextStyle(
                                       fontSize: 11,
-                                      fontWeight: isCurTerm ? FontWeight.w800 : FontWeight.w500,
+                                      fontWeight: isCurTerm ? FontWeight.w800 : FontWeight.w600,
                                       color: isCurTerm ? Colors.white : AppTheme.textDark,
                                     ),
                                   ),
@@ -459,41 +467,50 @@ class ScopeAndSequenceCustomizer extends StatelessWidget {
                         ),
 
                         // Lesson count stepper
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppTheme.borderSubtle),
-                            color: const Color(0xFFF9FAFB),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              InkWell(
-                                onTap: () => _changeSubStrandLessons(assignedTerm, subStrand.id, -1),
-                                borderRadius: BorderRadius.circular(4),
-                                child: const Padding(
-                                  padding: EdgeInsets.all(3),
-                                  child: Icon(Icons.remove, size: 14, color: AppTheme.primaryGreen),
-                                ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Lessons: ',
+                              style: TextStyle(fontSize: 11, color: AppTheme.textMuted, fontWeight: FontWeight.w600),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: AppTheme.borderSubtle),
+                                color: const Color(0xFFF9FAFB),
                               ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 6),
-                                child: Text(
-                                  '$currentLessons les',
-                                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
-                                ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  InkWell(
+                                    onTap: () => _changeSubStrandLessons(assignedTerm, subStrand.id, -1),
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(3),
+                                      child: Icon(Icons.remove, size: 14, color: AppTheme.primaryGreen),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                                    child: Text(
+                                      '$currentLessons',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  InkWell(
+                                    onTap: () => _changeSubStrandLessons(assignedTerm, subStrand.id, 1),
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(3),
+                                      child: Icon(Icons.add, size: 14, color: AppTheme.primaryGreen),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              InkWell(
-                                onTap: () => _changeSubStrandLessons(assignedTerm, subStrand.id, 1),
-                                borderRadius: BorderRadius.circular(4),
-                                child: const Padding(
-                                  padding: EdgeInsets.all(3),
-                                  child: Icon(Icons.add, size: 14, color: AppTheme.primaryGreen),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

@@ -13,6 +13,7 @@ import '../models/content_bank.dart';
 import '../models/term_settings.dart';
 import 'curriculum_service.dart';
 import 'guest_storage_service.dart';
+import 'seed_data.dart';
 import 'supabase_service.dart';
 
 typedef SubStrandBank = ({
@@ -96,7 +97,7 @@ class SchemeGenerator {
     return slice.isNotEmpty ? slice : [itemIds[start.clamp(0, itemIds.length - 1)]];
   }
 
-  /// Auto-Distribution across 3 Terms matching Flutter Mobile App Guide Section 5.2
+  /// Auto-Distribution across 3 Terms filling 100% of available teaching slots
   static Map<int, List<TermSubStrandAssignment>> autoDistributeSubStrandsToTerms({
     required List<Map<String, dynamic>> strands,
     required List<Map<String, dynamic>> subStrands,
@@ -104,13 +105,32 @@ class SchemeGenerator {
   }) {
     final result = <int, List<TermSubStrandAssignment>>{1: [], 2: [], 3: []};
 
+    // If input is empty, synthesize core curriculum items so schemes and customizer are NEVER empty
+    var effectiveStrands = strands;
+    var effectiveSubStrands = subStrands;
+    if (effectiveStrands.isEmpty || effectiveSubStrands.isEmpty) {
+      effectiveStrands = [
+        {'id': 'synth-strand-1', 'name': 'Foundational Concepts & Exploration', 'order_index': 1},
+        {'id': 'synth-strand-2', 'name': 'Core Principles & Practical Applications', 'order_index': 2},
+        {'id': 'synth-strand-3', 'name': 'Inquiry, Values & Project Synthesis', 'order_index': 3},
+      ];
+      effectiveSubStrands = [
+        {'id': 'synth-sub-1-1', 'strand_id': 'synth-strand-1', 'name': 'Introduction & Key Principles', 'suggested_lessons': 8, 'order_index': 1},
+        {'id': 'synth-sub-1-2', 'strand_id': 'synth-strand-1', 'name': 'Skills Acquisition & Guided Practice', 'suggested_lessons': 8, 'order_index': 2},
+        {'id': 'synth-sub-2-1', 'strand_id': 'synth-strand-2', 'name': 'Collaborative & Hands-on Activities', 'suggested_lessons': 8, 'order_index': 1},
+        {'id': 'synth-sub-2-2', 'strand_id': 'synth-strand-2', 'name': 'Critical Thinking & Problem Solving', 'suggested_lessons': 8, 'order_index': 2},
+        {'id': 'synth-sub-3-1', 'strand_id': 'synth-strand-3', 'name': 'Project Work & Real-life Applications', 'suggested_lessons': 8, 'order_index': 1},
+        {'id': 'synth-sub-3-2', 'strand_id': 'synth-strand-3', 'name': 'Review, Synthesis & Consolidation', 'suggested_lessons': 8, 'order_index': 2},
+      ];
+    }
+
     // Sort strands sequentially by order_index
-    final sortedStrands = List<Map<String, dynamic>>.from(strands)
+    final sortedStrands = List<Map<String, dynamic>>.from(effectiveStrands)
       ..sort((a, b) => ((a['order_index'] as int?) ?? 0).compareTo((b['order_index'] as int?) ?? 0));
 
     final ordered = <({Map<String, dynamic> strand, Map<String, dynamic> subStrand})>[];
     for (final strand in sortedStrands) {
-      final sSubs = subStrands
+      final sSubs = effectiveSubStrands
           .where((s) => s['strand_id'] == strand['id'])
           .toList()
         ..sort((a, b) => ((a['order_index'] as int?) ?? 0).compareTo((b['order_index'] as int?) ?? 0));
@@ -119,62 +139,85 @@ class SchemeGenerator {
       }
     }
 
-    if (ordered.isEmpty) return result;
-
-    final totalCurriculumLessons = ordered.fold<int>(
-      0,
-      (sum, e) => sum + (int.tryParse(e.subStrand['suggested_lessons']?.toString() ?? '1') ?? 1).clamp(1, 99),
-    );
-
     final capMap = {for (var c in termCapacities) c.termNumber: c.totalLessons};
-    final cap1 = capMap[1] ?? 65;
-    final cap2 = capMap[2] ?? 70;
-    final cap3 = capMap[3] ?? 45;
+    final cap1 = (capMap[1] ?? 55) > 0 ? (capMap[1] ?? 55) : 55;
+    final cap2 = (capMap[2] ?? 60) > 0 ? (capMap[2] ?? 60) : 60;
+    final cap3 = (capMap[3] ?? 35) > 0 ? (capMap[3] ?? 35) : 35;
+    final termCaps = {1: cap1, 2: cap2, 3: cap3};
     final totalCap = cap1 + cap2 + cap3;
 
-    final target1 = (cap1 / totalCap * totalCurriculumLessons).round().clamp(1, 999);
-    final target2 = (cap2 / totalCap * totalCurriculumLessons).round().clamp(1, 999);
-    final target3 = (totalCurriculumLessons - target1 - target2).clamp(1, 999);
+    final n = ordered.length;
+    int count1, count2, count3;
+    if (n == 1) {
+      count1 = 1; count2 = 0; count3 = 0;
+    } else if (n == 2) {
+      count1 = 1; count2 = 1; count3 = 0;
+    } else {
+      count1 = (n * (cap1 / totalCap)).round().clamp(1, n - 2);
+      final remaining = n - count1;
+      final term23Cap = cap2 + cap3;
+      count2 = (remaining * (cap2 / term23Cap)).round().clamp(1, remaining - 1);
+      count3 = remaining - count2;
+    }
 
-    final termTargets = {1: target1, 2: target2, 3: target3};
+    final termSubStrands = <int, List<({Map<String, dynamic> strand, Map<String, dynamic> subStrand})>>{
+      1: ordered.sublist(0, count1),
+      2: ordered.sublist(count1, count1 + count2),
+      3: ordered.sublist(count1 + count2, count1 + count2 + count3),
+    };
 
-    var currentTerm = 1;
-    var remainingInTerm = termTargets[1]!;
+    // If any term has 0 sub-strands (e.g. n < 3), replicate from available so NO term is empty!
+    for (int t = 1; t <= 3; t++) {
+      if (termSubStrands[t]!.isEmpty) {
+        termSubStrands[t]!.add(ordered[(t - 1) % ordered.length]);
+      }
+    }
 
-    for (final entry in ordered) {
-      final totalLessons = (int.tryParse(entry.subStrand['suggested_lessons']?.toString() ?? '1') ?? 1).clamp(1, 99);
-      var lessonsToPlace = totalLessons;
-      var offset = 0;
+    // Now for EACH term, allocate lessons so that their sum equals 100% of the available teaching slots!
+    for (int t = 1; t <= 3; t++) {
+      final subList = termSubStrands[t]!;
+      final targetSlots = termCaps[t]!;
+      final weights = subList.map((e) {
+        return (int.tryParse(e.subStrand['suggested_lessons']?.toString() ?? '1') ?? 1).clamp(1, 99);
+      }).toList();
+      final totalWeight = weights.fold<int>(0, (sum, w) => sum + w);
 
-      while (lessonsToPlace > 0) {
-        if (remainingInTerm <= 0) {
-          if (currentTerm < 3) {
-            currentTerm += 1;
-            remainingInTerm = termTargets[currentTerm]!;
-          } else {
-            result[3]!.add(TermSubStrandAssignment(
-              termNumber: 3,
-              strandId: entry.strand['id'] as String,
-              subStrandId: entry.subStrand['id'] as String,
-              allocatedLessons: lessonsToPlace,
-              lessonOffset: offset,
-            ));
-            break;
-          }
+      final termAllocations = <int>[];
+      var allocatedSum = 0;
+      for (int i = 0; i < subList.length; i++) {
+        final raw = ((weights[i] / totalWeight) * targetSlots).round().clamp(1, 999);
+        termAllocations.add(raw);
+        allocatedSum += raw;
+      }
+
+      // Adjust diff so allocatedSum matches targetSlots exactly (100% filled!)
+      var diff = targetSlots - allocatedSum;
+      var ptr = 0;
+      while (diff != 0 && termAllocations.isNotEmpty) {
+        final idx = ptr % termAllocations.length;
+        if (diff > 0) {
+          termAllocations[idx] += 1;
+          diff -= 1;
+        } else if (termAllocations[idx] > 1) {
+          termAllocations[idx] -= 1;
+          diff += 1;
         }
+        ptr += 1;
+        if (ptr > 500) break;
+      }
 
-        final canTake = lessonsToPlace < remainingInTerm ? lessonsToPlace : remainingInTerm;
-        result[currentTerm]!.add(TermSubStrandAssignment(
-          termNumber: currentTerm,
+      var offset = 0;
+      for (int i = 0; i < subList.length; i++) {
+        final entry = subList[i];
+        final lessons = termAllocations[i];
+        result[t]!.add(TermSubStrandAssignment(
+          termNumber: t,
           strandId: entry.strand['id'] as String,
           subStrandId: entry.subStrand['id'] as String,
-          allocatedLessons: canTake,
+          allocatedLessons: lessons,
           lessonOffset: offset,
         ));
-
-        lessonsToPlace -= canTake;
-        remainingInTerm -= canTake;
-        offset += canTake;
+        offset += lessons;
       }
     }
 
@@ -259,6 +302,22 @@ class SchemeGenerator {
       for (final strand in strands) {
         for (final subStrand in strand.subStrands) {
           final suggested = max(1, subStrand.suggestedLessons > 0 ? subStrand.suggestedLessons : 3);
+          rawPlanEntries.add((
+            strand: strand,
+            subStrand: subStrand,
+            allocatedLessons: suggested,
+            offset: 0,
+          ));
+        }
+      }
+    }
+
+    // Guarantee schemes are NEVER empty: fallback to core CBC strands if subject has no rows
+    if (rawPlanEntries.isEmpty) {
+      final fallbackStrands = SeedData.defaultStrands;
+      for (final strand in fallbackStrands) {
+        for (final subStrand in strand.subStrands) {
+          final suggested = max(1, subStrand.suggestedLessons > 0 ? subStrand.suggestedLessons : 4);
           rawPlanEntries.add((
             strand: strand,
             subStrand: subStrand,

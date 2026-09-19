@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/config/theme.dart';
+import '../../../models/grade.dart';
+import '../../../models/subject.dart';
 import 'home/home_screen.dart';
 import 'schemes/schemes_screen.dart';
 import 'saved/saved_screen.dart';
@@ -15,17 +17,31 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
   DateTime? _lastBackPressTime;
+  final GlobalKey<HomeScreenState> _homeKey = GlobalKey<HomeScreenState>();
 
   void _navigateToTab(int index) {
     setState(() => _currentIndex = index);
   }
 
+  void _handleSelectLearningArea(Grade grade, Subject subject) {
+    _homeKey.currentState?.selectGradeAndSubject(grade, subject);
+    _navigateToTab(0);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Selected ${grade.name} - ${subject.name} in Generator'),
+        duration: const Duration(seconds: 2),
+        backgroundColor: AppTheme.primaryBlue,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screens = <Widget>[
-      HomeScreen(onNavigateTab: _navigateToTab),
-      const SchemesScreen(),
-      const SavedScreen(),
+      HomeScreen(key: _homeKey, onNavigateTab: _navigateToTab),
+      SchemesScreen(onSelectLearningArea: _handleSelectLearningArea),
+      SavedScreen(onNavigateTab: _navigateToTab),
       const MenuScreen(),
     ];
 
@@ -42,7 +58,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
         // Double back-press to exit safely
         final now = DateTime.now();
-        if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+        if (_lastBackPressTime == null ||
+            now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
           _lastBackPressTime = now;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -65,7 +82,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         bottomNavigationBar: Container(
           decoration: const BoxDecoration(
             color: Colors.white,
-            border: Border(top: BorderSide(color: AppTheme.borderSubtle, width: 1)),
+            border:
+                Border(top: BorderSide(color: AppTheme.borderSubtle, width: 1)),
           ),
           child: BottomNavigationBar(
             currentIndex: _currentIndex,

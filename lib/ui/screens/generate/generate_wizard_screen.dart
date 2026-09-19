@@ -13,7 +13,7 @@ import '../../../services/guest_storage_service.dart';
 import '../../../services/scheme_generator.dart';
 import '../../../state/scheme_editor_provider.dart';
 import '../../../state/scheme_list_provider.dart';
-import '../editor/scheme_editor_screen.dart';
+import '../preview/scheme_preview_screen.dart';
 import '../../widgets/whatsapp_support_button.dart';
 import 'widgets/scope_and_sequence_customizer.dart';
 import 'widgets/term_calendar_customizer.dart';
@@ -286,7 +286,7 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (ctx) => SchemeEditorScreen(scheme: targetScheme),
+          builder: (ctx) => SchemePreviewScreen(scheme: targetScheme),
         ),
       );
     } catch (e) {
@@ -376,28 +376,123 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
   }
 
   Widget _buildProgressBar() {
-    final labels = ['Scope', 'Scope & Seq', 'Calendar', 'Cover & Summary'];
+    final stepTitles = ['Scope', 'Scope & Seq', 'Calendar', 'Cover'];
+    final stepIcons = [
+      Icons.school_rounded,
+      Icons.account_tree_rounded,
+      Icons.calendar_month_rounded,
+      Icons.badge_rounded,
+    ];
 
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      child: Row(
+      margin: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.borderSubtle),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          for (int i = 1; i <= 4; i++) ...[
-            _buildMilestone(i, labels[i - 1]),
-            if (i < 4) _buildConnector(i),
-          ],
+          Row(
+            children: [
+              for (int i = 1; i <= 4; i++) ...[
+                _buildWizardIndicatorCircle(i, stepIcons[i - 1]),
+                if (i < 4) _buildWizardConnectingLine(i),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              for (int i = 1; i <= 4; i++) ...[
+                if (i > 1) const SizedBox(width: 8),
+                _buildWizardTextLabel(i, 'STEP $i', stepTitles[i - 1]),
+              ],
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildMilestone(int step, String label) {
+  Widget _buildWizardIndicatorCircle(int step, IconData icon) {
+    final isDone = _currentStep > step;
+    final isCurrent = _currentStep == step;
+
+    return InkWell(
+      onTap: () {
+        if (_currentStep != 5) {
+          setState(() => _currentStep = step);
+        }
+      },
+      borderRadius: BorderRadius.circular(18),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isDone
+              ? const Color(0xFF22C55E)
+              : (isCurrent ? AppTheme.primaryGreen : const Color(0xFFF3F4F6)),
+          border: isCurrent
+              ? Border.all(color: AppTheme.primaryGreenLight, width: 3)
+              : (isDone
+                  ? null
+                  : Border.all(color: const Color(0xFFE5E7EB), width: 1.5)),
+          boxShadow: isCurrent
+              ? [
+                  BoxShadow(
+                    color: AppTheme.primaryGreen.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Center(
+          child: isDone
+              ? const Icon(Icons.check_rounded, size: 18, color: Colors.white)
+              : Icon(
+                  icon,
+                  size: 16,
+                  color: isCurrent ? Colors.white : const Color(0xFF9CA3AF),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWizardConnectingLine(int step) {
+    final isDone = _currentStep > step;
+
+    return Expanded(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: 3.5,
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: isDone ? const Color(0xFF22C55E) : const Color(0xFFE5E7EB),
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWizardTextLabel(int step, String stepNum, String title) {
     final isDone = _currentStep > step;
     final isCurrent = _currentStep == step;
 
     return Expanded(
-      flex: 3,
       child: InkWell(
         onTap: () {
           if (_currentStep != 5) {
@@ -406,58 +501,34 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
         },
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Container(
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
+            Text(
+              stepNum,
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
                 color: isCurrent
                     ? AppTheme.primaryGreen
-                    : (isDone ? AppTheme.primaryGreenLight : const Color(0xFFF3F4F6)),
-                border: Border.all(
-                  color: (isCurrent || isDone) ? AppTheme.primaryGreen : AppTheme.borderSubtle,
-                  width: 1.5,
-                ),
+                    : (isDone ? const Color(0xFF16A34A) : AppTheme.textMuted),
               ),
-              child: Center(
-                child: isDone
-                    ? const Icon(Icons.check, size: 14, color: AppTheme.primaryGreen)
-                    : Text(
-                        '$step',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.bold,
-                          color: isCurrent ? Colors.white : AppTheme.textMuted,
-                        ),
-                      ),
-              ),
+              maxLines: 1,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
-              label,
+              title,
               style: TextStyle(
-                fontSize: 10,
-                fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w500,
-                color: isCurrent ? AppTheme.primaryGreen : AppTheme.textMuted,
+                fontSize: 11,
+                fontWeight: isCurrent ? FontWeight.w800 : (isDone ? FontWeight.w700 : FontWeight.w600),
+                color: (isCurrent || isDone) ? AppTheme.textDark : AppTheme.textMuted,
               ),
               textAlign: TextAlign.center,
               maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildConnector(int step) {
-    final isDone = _currentStep > step;
-    return Expanded(
-      flex: 1,
-      child: Container(
-        height: 2,
-        margin: const EdgeInsets.only(bottom: 14),
-        color: isDone ? AppTheme.primaryGreen : const Color(0xFFE5E7EB),
       ),
     );
   }
@@ -655,31 +726,6 @@ class _GenerateWizardScreenState extends State<GenerateWizardScreen> {
             const SizedBox(height: 16),
           ],
 
-          // Reference Book
-          if (!hasNoSubjects && _referenceBooks.isNotEmpty) ...[
-            const Text('Reference Course Book', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: AppTheme.textDark)),
-            const SizedBox(height: 6),
-            DropdownButtonFormField<ReferenceBook>(
-              key: ValueKey('book-${_selectedSubject?.id}-${_selectedBook?.id}'),
-              initialValue: _referenceBooks.contains(_selectedBook) ? _selectedBook : null,
-              isExpanded: true,
-              hint: const Text('All KICD Approved Books (General)'),
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.auto_stories_outlined, color: AppTheme.primaryGreen),
-              ),
-              items: [
-                const DropdownMenuItem<ReferenceBook>(
-                  value: null,
-                  child: Text('All KICD Approved Books (General)'),
-                ),
-                ..._referenceBooks.map((b) => DropdownMenuItem(
-                  value: b,
-                  child: Text(b.publisher.isEmpty ? b.title : '${b.title} (${b.publisher})'),
-                )),
-              ],
-              onChanged: (val) => setState(() => _selectedBook = val),
-            ),
-          ],
 
           const SizedBox(height: 32),
 
